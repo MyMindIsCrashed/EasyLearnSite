@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Игры</h1>
+{% if user.is_teacher %}<a href="{% url 'games:create' %}" class="btn">+ Создать игру</a>{% endif %}
+<ul>
+{% for g in games %}
+    <li>
+        <a href="{% url 'games:detail' g.id %}">{{ g.title }}</a>
+        {% if g.is_active %}🟢{% else %}⚪{% endif %}
+    </li>
+{% empty %}
+    <li>Игр пока нет</li>
+{% endfor %}
+</ul>
+{% endblock %}

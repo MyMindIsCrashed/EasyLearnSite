@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Новая игра</h1>
+<form method="post">
+    {% csrf_token %}
+    <p><label>Название: <input type="text" name="title" required></label></p>
+    <p><label>Класс:
+        <select name="school_class" required>
+            {% for c in classes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+    </label></p>
+    <button class="btn" type="submit">Создать</button>
+</form>
+{% endblock %}

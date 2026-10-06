@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ game.title }}</h1>
+<h2>{{ question.text }}</h2>
+<form method="post" action="{% url 'games:answer' question.id %}">
+    {% csrf_token %}
+    {% for opt in question.options.all %}
+        <button name="option" value="{{ opt.id }}" class="btn">{{ opt.text }}</button>
+    {% endfor %}
+</form>
+<p>За верный ответ: {{ question.points }} балл(ов)</p>
+{% endblock %}

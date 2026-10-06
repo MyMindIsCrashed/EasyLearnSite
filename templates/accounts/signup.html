@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Регистрация — {{ role|default:"выбор роли" }}</h1>
+
+{% if not role %}
+    <a href="?role=teacher" class="btn">Я учитель</a>
+    <a href="?role=student" class="btn btn-secondary">Я ученик</a>
+{% else %}
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="role" value="{{ role }}">
+        {{ form.as_p }}
+        <button type="submit" class="btn">Зарегистрироваться</button>
+    </form>
+{% endif %}
+{% endblock %}

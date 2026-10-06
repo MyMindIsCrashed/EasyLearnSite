@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Кабинет учителя</h1>
+<h2>Мои классы</h2>
+<ul>
+{% for c in classes %}
+    <li>{{ c.name }} — {{ c.students.count }} учеников</li>
+{% empty %}
+    <li>Классов пока нет. Создай их в админке.</li>
+{% endfor %}
+</ul>
+{% endblock %}

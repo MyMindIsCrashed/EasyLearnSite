@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Мой кабинет</h1>
+<p>Всего баллов: <strong>{{ total }}</strong></p>
+<h2>История</h2>
+<ul>
+{% for tx in history %}
+    <li>{{ tx.created_at|date:"d.m.Y H:i" }} — {{ tx.points }} — {{ tx.comment }}</li>
+{% empty %}
+    <li>Пока нет начислений</li>
+{% endfor %}
+</ul>
+{% endblock %}

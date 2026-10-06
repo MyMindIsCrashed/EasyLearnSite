@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ game.title }}</h1>
+<p>Класс: {{ game.school_class.name }}</p>
+<p>Вопросов: {{ game.questions.count }}</p>
+<p>Всего баллов: {{ game.total_points }}</p>
+
+{% if user.is_teacher %}
+    <a href="/admin/games/question/add/?game={{ game.id }}" class="btn">+ Добавить вопрос</a>
+{% else %}
+    {% if game.is_active %}
+        <a href="{% url 'games:start' game.id %}" class="btn">Начать игру</a>
+    {% else %}
+        <p><em>Игра ещё не запущена учителем</em></p>
+    {% endif %}
+{% endif %}
+{% endblock %}

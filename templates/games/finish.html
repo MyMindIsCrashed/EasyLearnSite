@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Игра завершена! 🎉</h1>
+<p>Вы заработали: <strong>{{ earned }}</strong> баллов</p>
+<a href="{% url 'scores:leaderboard' %}" class="btn">Смотреть лидеров</a>
+{% endblock %}

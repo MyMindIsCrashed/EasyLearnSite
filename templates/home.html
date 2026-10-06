@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}EasyLearnSite — главная{% endblock %}
+
+{% block content %}
+<h1>Добро пожаловать в EasyLearnSite! 🎓</h1>
+<p>Игровая платформа для школьников 1-4 классов.</p>
+
+{% if not user.is_authenticated %}
+    <div style="margin-top: 20px;">
+        <a href="{% url 'accounts:signup' %}?role=teacher" class="btn">Я учитель</a>
+        <a href="{% url 'accounts:signup' %}?role=student" class="btn btn-secondary">Я ученик</a>
+    </div>
+{% endif %}
+{% endblock %}

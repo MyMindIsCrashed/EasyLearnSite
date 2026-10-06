@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>🏆 Лидеры</h1>
+<form method="get">
+    <select name="class" onchange="this.form.submit()">
+        <option value="">Все классы</option>
+        {% for c in classes %}
+            <option value="{{ c.id }}"
+                {% if selected_class == c.id|stringformat:"s" %}selected{% endif %}>
+                {{ c.name }}
+            </option>
+        {% endfor %}
+    </select>
+</form>
+<ol>
+{% for s in students %}
+    <li>
+        {{ s.get_full_name|default:s.username }} — {{ s.total|default:0 }} баллов
+        {% if user.is_teacher %}
+            <a href="{% url 'scores:give_points' s.id %}">[+]</a>
+        {% endif %}
+    </li>
+{% empty %}
+    <li>Пока никого нет</li>
+{% endfor %}
+</ol>
+{% endblock %}

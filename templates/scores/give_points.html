@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Начислить баллы: {{ student.get_full_name|default:student.username }}</h1>
+<form method="post">
+    {% csrf_token %}
+    <p><label>Баллы (можно минус): <input type="number" name="points" value="1" required></label></p>
+    <p><label>Комментарий: <input type="text" name="comment" maxlength="200"></label></p>
+    <button class="btn" type="submit">Начислить</button>
+</form>
+{% endblock %}
