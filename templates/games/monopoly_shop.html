@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Магазин карт — Монополия{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="text-center mb-4">
+        <div style="font-size: 64px;">🛒</div>
+        <h1 class="fw-bold mb-2">Магазин карт</h1>
+        <p class="text-muted">
+            Купи карту за баллы, заработанные в квизе.<br>
+            <strong>Броски кубика бесплатные</strong>, карты дают преимущество.
+        </p>
+
+        <div class="d-inline-block px-4 py-2 rounded-pill mt-3" style="background: #fff3d1; border: 2px solid #f59e0b;">
+            <span style="font-size: 20px;">💰</span>
+            <strong class="fs-4 ms-1" style="color: #92400e;">{{ wallet }}</strong>
+            <span class="ms-1" style="color: #92400e;">твоих баллов</span>
+        </div>
+
+        <div class="mt-3">
+            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                🎯 Максимум за квиз: {{ max_score }} баллов
+            </span>
+        </div>
+
+        {% if wallet == 0 %}
+            <div class="alert alert-info mt-4 mx-auto" style="max-width: 600px;">
+                У тебя <strong>0 баллов</strong> за квиз. Карты недоступны,
+                но ты можешь играть без них — броски бесплатные!
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        {% for card in cards %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card-shop {% if not card.affordable %}disabled{% endif %}"
+                     data-card="{{ card.id }}"
+                     data-price="{{ card.price }}">
+                    <div class="card-shop-emoji">{{ card.emoji }}</div>
+                    <h3 class="card-shop-title">{{ card.name }}</h3>
+                    <p class="card-shop-desc">{{ card.desc }}</p>
+
+                    <div class="card-shop-price-wrap">
+                        <div class="card-shop-price">
+                            💰 {{ card.price }} баллов
+                        </div>
+                        <div class="card-shop-percent">
+                            {{ card.percent }}% от максимума
+                        </div>
+                    </div>
+
+                    <button class="btn-buy-card w-100" {% if not card.affordable %}disabled{% endif %}>
+                        {% if card.affordable %}Купить за {{ card.price }}{% else %}Не хватает баллов{% endif %}
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{% url 'games:monopoly_play' monopoly.id %}"
+           class="btn btn-outline-primary rounded-pill px-5">
+            🎲 Играть без карты
+        </a>
+    </div>
+
+    <div class="text-center mt-3 text-muted">
+        <small>Игра начнётся, когда все игроки примут решение</small>
+    </div>
+
+    <div id="message" class="alert mt-4 mx-auto d-none" style="max-width: 500px;"></div>
+</div>
+
+<style>
+.card-shop {
+    background: white;
+    border-radius: 24px;
+    padding: 32px 24px;
+    border: 3px solid #e5e7f5;
+    transition: all 0.25s;
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.card-shop:hover:not(.disabled) {
+    transform: translateY(-8px);
+    box-shadow: 0 24px 48px -16px rgba(124, 58, 237, 0.4);
+    border-color: var(--brand);
+}
+.card-shop.disabled {
+    opacity: 0.55;
+    filter: grayscale(0.4);
+}
+.card-shop-emoji {
+    font-size: 56px;
+    margin-bottom: 16px;
+    line-height: 1;
+}
+.card-shop-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+.card-shop-desc {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.5;
+    flex-grow: 1;
+    margin-bottom: 20px;
+}
+.card-shop-price-wrap {
+    margin-bottom: 16px;
+    width: 100%;
+}
+.card-shop-price {
+    font-size: 18px;
+    font-weight: 900;
+    color: #92400e;
+}
+.card-shop-percent {
+    font-size: 12px;
+    color: #9a97ad;
+    font-weight: 700;
+    margin-top: 4px;
+}
+.btn-buy-card {
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 12px 24px;
+    font-weight: 800;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 3px 0 #5b21b6;
+}
+.btn-buy-card:hover:not(:disabled) {
+    background: #8b5cf6;
+    transform: translateY(-1px);
+}
+.btn-buy-card:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #5b21b6;
+}
+.btn-buy-card:disabled {
+    background: #c4c2d4;
+    box-shadow: 0 3px 0 #9a97ad;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+document.querySelectorAll('.card-shop').forEach(card => {
+    const btn = card.querySelector('.btn-buy-card');
+    if (!btn || btn.disabled) return;
+
+    btn.addEventListener('click', async () => {
+        const cardType = card.dataset.card;
+        btn.disabled = true;
+        btn.textContent = 'Покупка...';
+
+        try {
+            const fd = new FormData();
+            fd.append('card_type', cardType);
+
+            const r = await fetch("{% url 'games:monopoly_buy_card' monopoly.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: fd,
+            });
+            const data = await r.json();
+
+            if (data.error) {
+                showMsg('Ошибка: ' + data.error);
+                btn.disabled = false;
+                btn.textContent = 'Купить';
+                return;
+            }
+
+            showMsg('✅ Карта куплена! Идём в игру...', 'success');
+
+            setTimeout(() => {
+                window.location.href = "{% url 'games:monopoly_play' monopoly.id %}";
+            }, 1000);
+        } catch (e) {
+            showMsg('Ошибка сети');
+            btn.disabled = false;
+            btn.textContent = 'Купить';
+        }
+    });
+});
+
+function showMsg(text, type = 'danger') {
+    const el = document.getElementById('message');
+    el.className = `alert alert-${type} mt-4 mx-auto`;
+    el.style.maxWidth = '500px';
+    el.textContent = text;
+}
+</script>
+{% endblock %}

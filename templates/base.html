@@ -107,35 +107,85 @@
 
 <footer class="site-footer">
     <div class="container">
-        <div class="row g-4">
-            <div class="col-lg-5">
+        <div class="row g-5">
+
+            <div class="col-lg-4">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <span class="brand-icon">🎓</span>
                     <span class="brand-text text-white">EasyLearnSite</span>
                 </div>
-                <p class="text-white-50 mb-0">
-                    Превращаем уроки в игры. Дети учатся с удовольствием, учителя видят прогресс.
+                <p class="text-white-50 mb-3">
+                    Превращаем уроки и семинары в игры. Ученикам и студентам интересно,
+                    преподавателям — удобно.
                 </p>
+                <div class="footer-socials">
+                    <a href="#" title="Telegram"><i class="bi bi-telegram"></i></a>
+                    <a href="#" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+                    <a href="#" title="Instagram"><i class="bi bi-instagram"></i></a>
+                    <a href="#" title="GitHub"><i class="bi bi-github"></i></a>
+                </div>
             </div>
-            <div class="col-6 col-lg-3">
-                <h6 class="text-white text-uppercase small fw-bold mb-3">Платформа</h6>
+
+            <div class="col-6 col-lg-2">
+                <h6 class="footer-heading">Платформа</h6>
                 <ul class="list-unstyled footer-links">
                     <li><a href="/"><i class="bi bi-house"></i> Главная</a></li>
                     <li><a href="{% url 'games:list' %}"><i class="bi bi-controller"></i> Игры</a></li>
                     <li><a href="{% url 'scores:leaderboard' %}"><i class="bi bi-trophy"></i> Лидеры</a></li>
                 </ul>
             </div>
-            <div class="col-6 col-lg-4">
-                <h6 class="text-white text-uppercase small fw-bold mb-3">Для кого</h6>
+
+            <div class="col-6 col-lg-2">
+                <h6 class="footer-heading">Для кого</h6>
                 <ul class="list-unstyled footer-links">
                     <li><a href="{% url 'accounts:signup' %}?role=student"><i class="bi bi-mortarboard"></i> Ученикам</a></li>
-                    <li><a href="{% url 'accounts:signup' %}?role=teacher"><i class="bi bi-person-workspace"></i> Учителям</a></li>
+                    <li><a href="{% url 'accounts:signup' %}?role=teacher"><i class="bi bi-person-workspace"></i> Преподавателям</a></li>
+                    <li><a href="#"><i class="bi bi-buildings"></i> Школам и вузам</a></li>
                 </ul>
             </div>
+
+            <div class="col-6 col-lg-2">
+                <h6 class="footer-heading">Помощь</h6>
+                <ul class="list-unstyled footer-links">
+                    <li><a href="#"><i class="bi bi-question-circle"></i> Как играть</a></li>
+                    <li><a href="#"><i class="bi bi-book"></i> Инструкция</a></li>
+                    <li><a href="#"><i class="bi bi-envelope"></i> Связаться</a></li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <h6 class="footer-heading">Контакты</h6>
+                <ul class="list-unstyled footer-links">
+                    <li>
+                        <a href="mailto:hello@easylearnsite.com">
+                            <i class="bi bi-envelope"></i> hello@easylearnsite.com
+                        </a>
+                    </li>
+                    <li>
+                        <a href="tel:+996000000000">
+                            <i class="bi bi-telephone"></i> +996 (000) 00-00-00
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
         </div>
-        <hr class="my-4 border-secondary opacity-25">
-        <div class="text-center text-white-50 small">
-            © 2025 EasyLearnSite. Сделано с <i class="bi bi-heart-fill text-danger"></i> для школьников 1-4 классов.
+
+        <hr class="footer-divider">
+
+        <div class="footer-bottom">
+            <div class="row align-items-center g-2">
+                <div class="col-md-6 text-center text-md-start">
+                    © 2025 EasyLearnSite. Сделано с
+                    <i class="bi bi-heart-fill text-danger"></i>
+                    для школьников и студентов.
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <a href="#" class="footer-bottom-link">Политика конфиденциальности</a>
+                    <span class="footer-dot">·</span>
+                    <a href="#" class="footer-bottom-link">Условия использования</a>
+                </div>
+            </div>
         </div>
     </div>
 </footer>

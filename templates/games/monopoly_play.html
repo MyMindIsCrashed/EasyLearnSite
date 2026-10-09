@@ -10,9 +10,11 @@
             <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
                 Ход #<span id="turn-number">{{ monopoly.turn_number }}</span>
             </span>
-            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2">
-                Бонус: <strong id="my-bonus">{{ player.bonus_points }}</strong>
-            </span>
+            {% if card_info %}
+                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2" id="my-card-badge">
+                    {{ card_info.emoji }} {{ card_info.name }}
+                </span>
+            {% endif %}
         </div>
     </div>
 
@@ -29,9 +31,30 @@
             🎲 Бросить кубик
         </button>
 
+        <div id="roulette" class="roulette-container d-none">
+            <div class="roulette-window">
+                <div class="roulette-track" id="roulette-track"></div>
+                <div class="roulette-center-line"></div>
+                <div class="roulette-pointer">▼</div>
+            </div>
+        </div>
+
         <div id="dice-result" class="mt-3 d-none">
-            <div class="dice-big" id="dice-value">?</div>
-            <div id="dice-event" class="mt-2 fw-bold"></div>
+            <div class="result-wrapper">
+                <div class="result-cell result-main">
+                    <div class="dice-big" id="dice-value">?</div>
+                </div>
+                <div class="result-cell result-modifier d-none" id="modifier-cell">
+                    <div class="dice-mod" id="dice-modifier">+3</div>
+                </div>
+                <div class="result-cell result-equals d-none" id="equals-cell">
+                    <div class="dice-equals">=</div>
+                </div>
+                <div class="result-cell result-total d-none" id="total-cell">
+                    <div class="dice-total" id="dice-total">?</div>
+                </div>
+            </div>
+            <div id="dice-event" class="mt-3 fw-bold"></div>
         </div>
 
         <div id="message" class="alert mt-3 mb-0 d-none"></div>
@@ -98,32 +121,40 @@
     position: absolute;
     bottom: 4px;
     right: 4px;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 16px;
     border: 2px solid #6366f1;
     overflow: hidden;
-    z-index: 2;
+    z-index: 10;
+    box-shadow: 0 4px 10px -2px rgba(99,102,241,0.5);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .track-cell-player img { width: 100%; height: 100%; object-fit: cover; }
-
+.track-cell-player.is-me {
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251,191,36,0.5), 0 4px 12px -2px rgba(251,191,36,0.6);
+    z-index: 20;
+}
+.track-cell-player.jumping { animation: chipJump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes chipJump {
+    0%   { transform: scale(1) translateY(0); }
+    40%  { transform: scale(1.4) translateY(-14px); }
+    70%  { transform: scale(1.15) translateY(-4px); }
+    100% { transform: scale(1) translateY(0); }
+}
 .track-cell.me-here {
     border-color: #6366f1;
     box-shadow: 0 0 0 4px rgba(99,102,241,0.35);
     transform: scale(1.08);
     background: #eef2ff;
 }
-
-.track-cell.trail {
-    background: linear-gradient(135deg, #c7d2fe, #ddd6fe);
-    border-color: #a5b4fc;
-}
-
+.track-cell.trail { background: linear-gradient(135deg, #c7d2fe, #ddd6fe); border-color: #a5b4fc; }
 .track-cell.stepping {
     border-color: #f59e0b;
     box-shadow: 0 0 0 4px rgba(245,158,11,0.5);
@@ -131,32 +162,249 @@
     background: #fef3c7;
     z-index: 5;
 }
-
 .track-cell.arrived {
     border-color: #10b981;
     box-shadow: 0 0 0 4px rgba(16,185,129,0.4);
     background: #d1fae5;
 }
-
+.track-cell.modifier-hit { animation: modifierPulse 0.8s ease-out; }
+.track-cell.modifier-hit-trap { animation: modifierPulseTrap 0.8s ease-out; }
+@keyframes modifierPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.8); transform: scale(1); }
+    50%  { box-shadow: 0 0 0 14px rgba(251,191,36,0); transform: scale(1.15); }
+    100% { box-shadow: 0 0 0 4px rgba(245,158,11,0.5); transform: scale(1.12); }
+}
+@keyframes modifierPulseTrap {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.8); transform: scale(1); }
+    50%  { box-shadow: 0 0 0 14px rgba(239,68,68,0); transform: scale(1.15); }
+    100% { box-shadow: 0 0 0 4px rgba(239,68,68,0.5); transform: scale(1.12); }
+}
 .track-start    { background: linear-gradient(135deg, #bbf7d0, #86efac); }
 .track-finish   { background: linear-gradient(135deg, #fde68a, #fbbf24); }
-.track-question { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
 .track-boost    { background: linear-gradient(135deg, #fef3c7, #fde68a); }
 .track-trap     { background: linear-gradient(135deg, #fecaca, #fca5a5); }
 .track-bonus    { background: linear-gradient(135deg, #e9d5ff, #d8b4fe); }
 .track-swap     { background: linear-gradient(135deg, #cffafe, #a5f3fc); }
 
-.dice-big {
-    font-size: 72px;
+.roulette-container {
+    margin: 20px auto;
+    width: 100%;
+    max-width: 500px;
+}
+.roulette-window {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(180deg, #1e1b4b 0%, #2a2555 50%, #1e1b4b 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.6), 0 12px 32px -12px rgba(30, 27, 75, 0.6);
+    border: 3px solid #3d31cc;
+}
+.roulette-window::before,
+.roulette-window::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 90px;
+    z-index: 3;
+    pointer-events: none;
+}
+.roulette-window::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(30,27,75,1) 0%, rgba(30,27,75,0.85) 50%, transparent 100%);
+}
+.roulette-window::after {
+    right: 0;
+    background: linear-gradient(-90deg, rgba(30,27,75,1) 0%, rgba(30,27,75,0.85) 50%, transparent 100%);
+}
+.roulette-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    will-change: transform;
+}
+.roulette-item {
+    width: 100px;
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    position: relative;
+    font-family: 'Nunito', sans-serif;
+    transition: transform 0.3s;
+}
+.roulette-item::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    background: rgba(255,255,255,0.1);
+}
+.roulette-item:nth-child(6n+1) { color: #a5b4fc; }
+.roulette-item:nth-child(6n+2) { color: #fcd34d; }
+.roulette-item:nth-child(6n+3) { color: #fca5a5; }
+.roulette-item:nth-child(6n+4) { color: #6ee7b7; }
+.roulette-item:nth-child(6n+5) { color: #c4b5fd; }
+.roulette-item:nth-child(6n+6) { color: #f9a8d4; }
+.roulette-pointer {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 28px;
+    color: var(--yellow);
+    z-index: 10;
+    line-height: 1;
+    filter: drop-shadow(0 3px 6px rgba(251, 191, 36, 0.8));
+    animation: pointerPulse 0.8s ease-in-out infinite;
+}
+@keyframes pointerPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50%      { transform: translateX(-50%) scale(1.15); }
+}
+.roulette-center-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    background: linear-gradient(180deg, transparent, var(--yellow), transparent);
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.result-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px;
+}
+.result-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center;
+}
+.result-main .dice-big {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 130px;
+    height: 130px;
+    font-size: 82px;
     font-weight: 900;
     line-height: 1;
-    color: #6366f1;
-    animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    color: #78350f;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 24px;
+    box-shadow: 0 12px 32px -8px rgba(251, 191, 36, 0.5);
+    border: 3px solid #f59e0b;
+    animation: diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-@keyframes pop {
-    0%   { transform: scale(0.3); opacity: 0; }
-    60%  { transform: scale(1.2); opacity: 1; }
+@keyframes diceAppear {
+    0%   { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+    60%  { transform: scale(1.15) rotate(5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); }
+}
+.result-modifier .dice-mod {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 90px;
+    height: 90px;
+    font-size: 54px;
+    font-weight: 900;
+    line-height: 1;
+    border-radius: 20px;
+    animation: modifierAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.result-modifier.boost .dice-mod {
+    color: #78350f;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 3px solid #f59e0b;
+    box-shadow: 0 10px 24px -8px rgba(251, 191, 36, 0.5);
+}
+.result-modifier.trap .dice-mod {
+    color: #7f1d1d;
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 3px solid #ef4444;
+    box-shadow: 0 10px 24px -8px rgba(239, 68, 68, 0.5);
+}
+@keyframes modifierAppear {
+    0%   { transform: scale(0.3) translateX(40px) rotate(15deg); opacity: 0; }
+    60%  { transform: scale(1.15) translateX(-5px) rotate(-5deg); opacity: 1; }
+    100% { transform: scale(1) translateX(0) rotate(0); }
+}
+.result-equals .dice-equals {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-size: 42px;
+    font-weight: 900;
+    color: #78350f;
+    animation: equalsAppear 0.4s ease-out;
+}
+@keyframes equalsAppear {
+    0%   { transform: scale(0) rotate(-90deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.result-total .dice-total {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 160px;
+    height: 160px;
+    font-size: 92px;
+    font-weight: 900;
+    line-height: 1;
+    color: white;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 28px;
+    box-shadow: 0 16px 40px -8px rgba(16, 185, 129, 0.6);
+    border: 4px solid #059669;
+    animation: totalAppear 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 3px 0 rgba(0,0,0,0.15);
+}
+.result-total.negative .dice-total {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-color: #b91c1c;
+}
+@keyframes totalAppear {
+    0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+    50%  { transform: scale(1.3) rotate(15deg); opacity: 1; }
+    75%  { transform: scale(0.95) rotate(-5deg); }
+    100% { transform: scale(1) rotate(0); }
+}
+.result-total.pulse .dice-total { animation: totalPulse 0.6s ease-out; }
+@keyframes totalPulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.15); }
     100% { transform: scale(1); }
+}
+.result-main.shrink .dice-big { transform: scale(0.85); opacity: 0.7; }
+.result-modifier.merge .dice-mod {
+    transform: scale(0.5) translateX(-80px);
+    opacity: 0;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .player-mini {
@@ -173,6 +421,19 @@
     border-color: #fbbf24;
     box-shadow: 0 0 0 3px rgba(251,191,36,0.25);
 }
+
+@media (max-width: 576px) {
+    .roulette-window { height: 100px; }
+    .roulette-item { width: 70px; font-size: 42px; }
+    .roulette-window::before,
+    .roulette-window::after { width: 60px; }
+    .track-cell-player { width: 28px; height: 28px; font-size: 14px; }
+    .result-main .dice-big { width: 100px; height: 100px; font-size: 64px; }
+    .result-modifier .dice-mod { width: 70px; height: 70px; font-size: 42px; }
+    .result-total .dice-total { width: 120px; height: 120px; font-size: 68px; }
+    .result-equals .dice-equals { font-size: 32px; }
+    .result-wrapper { gap: 8px; }
+}
 </style>
 
 <script>
@@ -181,13 +442,31 @@ const MY_ID = {{ player.id }};
 const MAP = {{ map|safe }};
 const MAP_LENGTH = {{ max_position }};
 
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
 const trackEl = document.getElementById('track');
 const statusEl = document.getElementById('turn-status');
 const btn = document.getElementById('roll-btn');
+const roulette = document.getElementById('roulette');
+const rouletteTrack = document.getElementById('roulette-track');
 
 let lastPositions = {};
 let passedCells = [];
 let animating = false;
+let spinning = false;
+let rolling = false;
+let myAvatarHtml = null;
+
+function makeChipHtml(p) {
+    if (p.avatar) return `<img src="${p.avatar}" alt="">`;
+    return p.emoji || '🧑';
+}
+
+function getMyChip() {
+    return document.querySelector(`.track-cell-player[data-player-id="${MY_ID}"]`);
+}
 
 function renderMap(players) {
     trackEl.innerHTML = '';
@@ -216,14 +495,12 @@ function renderMap(players) {
         label.textContent = cell.label;
         cellEl.appendChild(label);
 
-        // фишки
         players.filter(p => p.position === i).forEach(p => {
             const badge = document.createElement('div');
-            badge.className = 'track-cell-player';
+            badge.className = 'track-cell-player' + (p.id === MY_ID ? ' is-me' : '');
             badge.dataset.playerId = p.id;
             badge.title = p.name;
-            if (p.avatar) badge.innerHTML = `<img src="${p.avatar}" alt="">`;
-            else badge.textContent = p.emoji || '🧑';
+            badge.innerHTML = makeChipHtml(p);
             cellEl.appendChild(badge);
         });
 
@@ -231,38 +508,115 @@ function renderMap(players) {
     }
 }
 
-async function animateMovement(from, to) {
+function moveMyChipTo(cellIndex, jump = true) {
+    const targetCell = document.querySelector(`.track-cell[data-index="${cellIndex}"]`);
+    if (!targetCell) return;
+    const existing = getMyChip();
+    if (existing && existing.parentElement === targetCell) return;
+
+    let chipHtml = myAvatarHtml || existing?.innerHTML || '🧑';
+    if (existing) existing.remove();
+
+    const newChip = document.createElement('div');
+    newChip.className = 'track-cell-player is-me';
+    newChip.dataset.playerId = MY_ID;
+    newChip.innerHTML = chipHtml;
+    targetCell.appendChild(newChip);
+
+    if (jump) {
+        newChip.classList.add('jumping');
+        setTimeout(() => newChip.classList.remove('jumping'), 400);
+    }
+    document.querySelectorAll('.track-cell.me-here').forEach(el => el.classList.remove('me-here'));
+    targetCell.classList.add('me-here');
+}
+
+async function animateMovement(from, to, markTrail = true) {
+    if (from === to) return;
     animating = true;
-    passedCells = [];
+    if (markTrail) passedCells = [];
+    const meChip = getMyChip();
+    if (meChip) myAvatarHtml = meChip.innerHTML;
 
-    // идём от from+1 до to
-    for (let step = from + 1; step <= to; step++) {
-        const cellEl = document.querySelector(`.track-cell[data-index="${step}"]`);
+    const step = from < to ? 1 : -1;
+    for (let i = from + step; step > 0 ? i <= to : i >= to; i += step) {
+        const cellEl = document.querySelector(`.track-cell[data-index="${i}"]`);
         if (!cellEl) continue;
-
         cellEl.classList.add('stepping');
-        await sleep(400);
+        moveMyChipTo(i, true);
+        await sleep(380);
         cellEl.classList.remove('stepping');
-
-        if (step < to) {
+        if (markTrail && i !== to) {
             cellEl.classList.add('trail');
-            passedCells.push(step);
+            passedCells.push(i);
         }
     }
-
-    // финальная клетка — "arrived"
     const finalCell = document.querySelector(`.track-cell[data-index="${to}"]`);
     if (finalCell) {
         finalCell.classList.add('arrived');
         setTimeout(() => finalCell.classList.remove('arrived'), 1200);
     }
-
     await sleep(300);
     animating = false;
 }
 
-function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
+function spinDice(finalValue) {
+    return new Promise((resolve) => {
+        spinning = true;
+        roulette.classList.remove('d-none');
+        btn.classList.add('d-none');
+
+        const isMobile = window.innerWidth <= 576;
+        const ITEM_W = isMobile ? 70 : 100;
+        const TOTAL_ITEMS = 50;
+        const STOP_INDEX = 40;
+
+        requestAnimationFrame(() => {
+            const windowEl = roulette.querySelector('.roulette-window');
+            const windowWidth = windowEl.offsetWidth;
+
+            rouletteTrack.innerHTML = '';
+            for (let i = 0; i < TOTAL_ITEMS; i++) {
+                const el = document.createElement('div');
+                el.className = 'roulette-item';
+                el.textContent = Math.floor(Math.random() * 6) + 1;
+                rouletteTrack.appendChild(el);
+            }
+
+            const items = rouletteTrack.children;
+            items[STOP_INDEX].textContent = finalValue;
+
+            const itemCenter = (STOP_INDEX * ITEM_W) + (ITEM_W / 2);
+            const offset = itemCenter - (windowWidth / 2);
+
+            rouletteTrack.style.transition = 'none';
+            rouletteTrack.style.transform = 'translateX(0)';
+            void rouletteTrack.offsetWidth;
+
+            rouletteTrack.style.transition = 'transform 4.5s cubic-bezier(0.1, 0.95, 0.2, 1)';
+            rouletteTrack.style.transform = `translateX(-${offset}px)`;
+
+            setTimeout(() => {
+                items[STOP_INDEX].style.transform = 'scale(1.35)';
+                items[STOP_INDEX].style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                setTimeout(() => { items[STOP_INDEX].style.transform = 'scale(1)'; }, 400);
+                setTimeout(() => {
+                    roulette.classList.add('d-none');
+                    spinning = false;
+                    resolve();
+                }, 1000);
+            }, 4500);
+        });
+    });
+}
+
+function resetResultUI() {
+    document.getElementById('modifier-cell').classList.add('d-none');
+    document.getElementById('equals-cell').classList.add('d-none');
+    document.getElementById('total-cell').classList.add('d-none');
+    document.getElementById('modifier-cell').classList.remove('boost', 'trap', 'merge');
+    document.getElementById('total-cell').classList.remove('pulse', 'negative');
+    document.querySelector('.result-main').classList.remove('shrink');
 }
 
 async function refreshState() {
@@ -273,22 +627,28 @@ async function refreshState() {
         document.getElementById('turn-number').textContent = data.turn_number;
 
         const me = data.players.find(p => p.id === MY_ID);
-        if (me) {
-            document.getElementById('my-bonus').textContent = me.bonus_points;
+
+        if (spinning || animating || rolling) {
+            data.players.forEach(p => {
+                const card = document.querySelector(`[data-player-id="${p.id}"]`);
+                if (card) {
+                    const posEl = card.querySelector('.pos-value');
+                    if (posEl) posEl.textContent = p.position;
+                }
+            });
+            return;
         }
 
-        // если я двигался — анимируем
         if (me && lastPositions[MY_ID] !== undefined && lastPositions[MY_ID] !== me.position) {
             const from = lastPositions[MY_ID];
             const to = me.position;
+            renderMap(data.players);
             await animateMovement(from, to);
+        } else {
+            renderMap(data.players);
         }
 
-        renderMap(data.players);
-
-        data.players.forEach(p => {
-            lastPositions[p.id] = p.position;
-        });
+        data.players.forEach(p => { lastPositions[p.id] = p.position; });
 
         data.players.forEach(p => {
             const card = document.querySelector(`[data-player-id="${p.id}"]`);
@@ -310,7 +670,7 @@ async function refreshState() {
         }
 
         if (data.status === 'waiting') {
-            statusEl.innerHTML = '<div class="fs-5 fw-bold text-muted">⏳ Ждём учителя…</div>';
+            statusEl.innerHTML = '<div class="fs-5 fw-bold text-muted">⏳ Ждём остальных…</div>';
             btn.classList.add('d-none');
             return;
         }
@@ -334,7 +694,8 @@ async function refreshState() {
 }
 
 btn.addEventListener('click', async function () {
-    if (animating) return;
+    if (rolling || animating || spinning) return;
+    rolling = true;
     this.disabled = true;
 
     try {
@@ -352,40 +713,118 @@ btn.addEventListener('click', async function () {
                 'already_finished': 'Ты уже на финише',
             };
             showMessage(msgs[data.error] || data.error);
+            rolling = false;
             this.disabled = false;
             return;
         }
 
-        // показываем кубик
-        const diceBox = document.getElementById('dice-result');
-        const diceVal = document.getElementById('dice-value');
-        const diceEv = document.getElementById('dice-event');
+        await spinDice(data.dice);
 
-        diceBox.classList.remove('d-none');
-        diceVal.textContent = data.dice;
-        diceVal.style.animation = 'none';
-        void diceVal.offsetWidth;
-        diceVal.style.animation = 'pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        const from = data.from;
+        const posAfterDice = data.pos_after_dice;
+        const finalPos = data.to;
+        const modifierType = data.modifier_type;
+        const modifier = data.modifier;
 
-        diceEv.textContent = data.cell_label;
-        if (data.cell_type === 'boost' || data.cell_type === 'bonus') {
-            diceEv.className = 'mt-2 fw-bold text-success';
-        } else if (data.cell_type === 'trap') {
-            diceEv.className = 'mt-2 fw-bold text-danger';
+        if (modifierType === 'boost' || modifierType === 'trap' || modifierType === 'shield') {
+            const diceBox = document.getElementById('dice-result');
+            const diceVal = document.getElementById('dice-value');
+            const modCell = document.getElementById('modifier-cell');
+            const modVal = document.getElementById('dice-modifier');
+            const eqCell = document.getElementById('equals-cell');
+            const totalCell = document.getElementById('total-cell');
+            const totalVal = document.getElementById('dice-total');
+            const diceEv = document.getElementById('dice-event');
+
+            resetResultUI();
+            diceBox.classList.remove('d-none');
+            diceVal.textContent = data.dice;
+            diceVal.style.animation = 'none';
+            void diceVal.offsetWidth;
+            diceVal.style.animation = 'diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            diceEv.textContent = '';
+
+            await sleep(900);
+
+            const isTrap = (modifierType === 'trap');
+            const isShield = (modifierType === 'shield');
+            await animateMovement(from, posAfterDice, false);
+
+            const modCellEl = document.querySelector(`.track-cell[data-index="${posAfterDice}"]`);
+            if (modCellEl) {
+                modCellEl.classList.add(isTrap ? 'modifier-hit-trap' : 'modifier-hit');
+                setTimeout(() => modCellEl.classList.remove('modifier-hit', 'modifier-hit-trap'), 900);
+            }
+
+            await sleep(500);
+
+            if (isShield) {
+                diceEv.textContent = '🛡 Щит спас от ловушки!';
+                diceEv.className = 'mt-3 fw-bold text-info';
+                await sleep(1500);
+                diceBox.classList.add('d-none');
+            } else {
+                modVal.textContent = (modifier > 0 ? '+' : '') + modifier;
+                modCell.classList.add(isTrap ? 'trap' : 'boost');
+                modCell.classList.remove('d-none');
+                await sleep(900);
+
+                eqCell.classList.remove('d-none');
+                await sleep(400);
+
+                const totalSteps = data.dice + modifier;
+                totalVal.textContent = totalSteps;
+                if (totalSteps < 0) totalCell.classList.add('negative');
+                totalCell.classList.remove('d-none');
+                totalCell.classList.add('pulse');
+
+                diceEv.textContent = data.cell_label;
+                diceEv.className = 'mt-3 fw-bold ' + (modifier > 0 ? 'text-success' : 'text-danger');
+
+                await sleep(700);
+                modCell.classList.add('merge');
+                document.querySelector('.result-main').classList.add('shrink');
+                eqCell.classList.add('d-none');
+                await sleep(1000);
+                diceBox.classList.add('d-none');
+            }
+
+            await sleep(300);
+            if (finalPos !== posAfterDice) {
+                await animateMovement(posAfterDice, finalPos, true);
+            }
         } else {
-            diceEv.className = 'mt-2 fw-bold text-primary';
+            const diceBox = document.getElementById('dice-result');
+            const diceVal = document.getElementById('dice-value');
+            const diceEv = document.getElementById('dice-event');
+
+            resetResultUI();
+            diceBox.classList.remove('d-none');
+            diceVal.textContent = data.dice;
+            diceVal.style.animation = 'none';
+            void diceVal.offsetWidth;
+            diceVal.style.animation = 'diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            diceEv.textContent = data.cell_label;
+            diceEv.className = 'mt-3 fw-bold text-primary';
+
+            await sleep(1300);
+            diceBox.classList.add('d-none');
+            await animateMovement(from, finalPos);
         }
 
-        // анимация
-        await animateMovement(data.from, data.to);
+        // убираем бейдж карты, если использована
+        if (data.applied_card) {
+            showMessage('🎴 Ты применил карту!', 'success');
+        }
 
-        lastPositions[MY_ID] = data.to;
+        lastPositions[MY_ID] = finalPos;
+        rolling = false;
         await refreshState();
-
         setTimeout(() => { this.disabled = false; }, 300);
     } catch (e) {
-        console.error(e);
-        showMessage('Ошибка сети');
+        console.error('ROLL ERROR:', e);
+        showMessage('Ошибка: ' + (e.message || 'что-то сломалось'));
+        rolling = false;
         this.disabled = false;
     }
 });
@@ -394,10 +833,10 @@ function showMessage(text, type = 'danger') {
     const el = document.getElementById('message');
     el.className = `alert alert-${type} mt-3 mb-0`;
     el.textContent = text;
-    setTimeout(() => { el.className = 'alert mt-3 mb-0 d-none'; }, 2500);
+    setTimeout(() => { el.className = 'alert mt-3 mb-0 d-none'; }, 4000);
 }
 
 refreshState();
-setInterval(() => { if (!animating) refreshState(); }, 2000);
+setInterval(() => { if (!animating && !spinning && !rolling) refreshState(); }, 2000);
 </script>
 {% endblock %}

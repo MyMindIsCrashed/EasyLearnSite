@@ -41,6 +41,11 @@ class GameSessionAdmin(admin.ModelAdmin):
 class MonopolyPlayerInline(admin.TabularInline):
     model = MonopolyPlayer
     extra = 0
+    fields = (
+        'student', 'position', 'card_type', 'card_used',
+        'has_extra_turn', 'wallet_start', 'is_finished',
+    )
+    readonly_fields = ('position', 'card_used', 'has_extra_turn', 'is_finished')
 
 
 @admin.register(MonopolyGame)
@@ -52,5 +57,11 @@ class MonopolyGameAdmin(admin.ModelAdmin):
 
 @admin.register(MonopolyPlayer)
 class MonopolyPlayerAdmin(admin.ModelAdmin):
-    list_display = ('student', 'monopoly', 'position', 'bonus_points', 'is_finished')
-    list_filter = ('is_finished', 'monopoly')
+    list_display = (
+        'student', 'monopoly', 'position',
+        'card_type', 'card_used', 'has_extra_turn',
+        'wallet_start', 'points_spent',
+        'is_finished',
+    )
+    list_filter = ('is_finished', 'card_type', 'has_extra_turn', 'monopoly')
+    search_fields = ('student__username',)

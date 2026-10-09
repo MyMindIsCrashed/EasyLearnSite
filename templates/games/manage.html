@@ -103,79 +103,138 @@
         <div class="col-lg-5">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">
-                        <i class="bi bi-2-circle-fill text-primary"></i> Управление
-                    </h5>
 
-                    <p class="mb-3">Статус:
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h5 class="fw-bold mb-0">
+                            <i class="bi bi-sliders text-primary"></i> Управление
+                        </h5>
                         {% if game.status == 'waiting' %}
-                            <span class="badge bg-secondary">Ожидание</span>
+                            <span class="badge bg-secondary-subtle text-secondary">Ожидание</span>
                         {% elif game.status == 'quiz' %}
-                            <span class="badge bg-info">Квиз идёт</span>
+                            <span class="badge bg-info-subtle text-info">
+                                <i class="bi bi-circle-fill" style="font-size:8px"></i> Квиз идёт
+                            </span>
                         {% elif game.status == 'maze' %}
-                            <span class="badge bg-warning">Лабиринт</span>
+                            <span class="badge bg-warning-subtle text-warning">
+                                <i class="bi bi-circle-fill" style="font-size:8px"></i> Лабиринт
+                            </span>
                         {% else %}
-                            <span class="badge bg-success">Завершена</span>
+                            <span class="badge bg-success-subtle text-success">Завершена</span>
                         {% endif %}
-                    </p>
+                    </div>
 
-                    <div class="d-grid gap-2">
+                    {% if game.questions.count < 3 %}
+                        <div class="alert alert-danger small mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                            <div>
+                                Нужно минимум <strong>3 вопроса</strong>.<br>
+                                Сейчас: <strong>{{ game.questions.count }}</strong>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- ЭТАП 1: КВИЗ -->
+                    <div class="control-stage">
+                        <div class="stage-badge">Этап 1</div>
+                        <div class="stage-title">
+                            <i class="bi bi-question-circle-fill text-primary"></i> Квиз
+                        </div>
+                        <p class="stage-desc">Ученики отвечают на вопросы</p>
 
                         {% if game.questions.count < 3 %}
-                            <div class="alert alert-danger small mb-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-exclamation-triangle-fill fs-4"></i>
-                                <div>
-                                    Нужно минимум <strong>3 вопроса</strong>.<br>
-                                    Сейчас: <strong>{{ game.questions.count }}</strong>
-                                </div>
-                            </div>
-                            <a href="{% url 'games:question_add' game.id %}"
-                               class="btn btn-danger rounded-pill fw-bold pulse-btn">
-                                <i class="bi bi-plus-circle-fill me-2"></i>
-                                Добавить вопрос
-                            </a>
-                            <button class="btn btn-secondary rounded-pill" disabled>
+                            <button class="btn btn-secondary w-100" disabled>
                                 <i class="bi bi-play-fill"></i> Запустить квиз
                             </button>
-                        {% elif game.status != 'waiting' %}
-                            <button class="btn btn-secondary rounded-pill" disabled>
-                                <i class="bi bi-play-fill"></i> Квиз уже идёт
-                            </button>
-                        {% else %}
+                        {% elif game.status == 'waiting' %}
                             <a href="{% url 'games:start_quiz' game.id %}"
-                               class="btn btn-info text-white rounded-pill">
+                               class="btn btn-primary w-100">
                                 <i class="bi bi-play-fill"></i> Запустить квиз
                             </a>
-                        {% endif %}
-
-                        <a href="{% url 'games:start_maze' game.id %}"
-                           class="btn btn-warning rounded-pill {% if game.status != 'quiz' %}disabled{% endif %}">
-                            <i class="bi bi-grid-3x3-gap-fill"></i> Начать лабиринт
-                        </a>
-
-                        <!-- МОНОПОЛИЯ -->
-                        {% if monopoly %}
-                            <a href="{% url 'games:monopoly_host' monopoly.id %}"
-                               class="btn btn-success rounded-pill">
-                                🎲 Монополия
-                                <span class="badge bg-white text-success ms-1">{{ monopoly.players.count }}</span>
-                            </a>
                         {% else %}
-                            <a href="{% url 'games:monopoly_create' game.id %}"
-                               class="btn btn-outline-success rounded-pill">
-                                🎲 Создать Монополию
-                            </a>
+                            <button class="btn btn-secondary w-100" disabled>
+                                <i class="bi bi-check-circle-fill"></i> Квиз пройден
+                            </button>
                         {% endif %}
+                    </div>
 
+                    <!-- ЭТАП 2: ЧТО ДАЛЬШЕ -->
+                    <div class="control-stage">
+                        <div class="stage-badge stage-badge-2">Этап 2</div>
+                        <div class="stage-title">
+                            <i class="bi bi-signpost-split-fill text-warning"></i> Что дальше?
+                        </div>
+                        <p class="stage-desc">Выберите финальный режим игры</p>
+
+                        <div class="stage-options">
+                            <!-- Лабиринт -->
+                            <a href="{% url 'games:start_maze' game.id %}"
+                               class="stage-option {% if game.status != 'quiz' %}stage-option-disabled{% endif %}">
+                                <div class="stage-option-icon bg-warning-soft">
+                                    <i class="bi bi-grid-3x3-gap-fill text-warning"></i>
+                                </div>
+                                <div class="stage-option-body">
+                                    <div class="stage-option-title">Лабиринт</div>
+                                    <div class="stage-option-desc">Ученики проходят лабиринт за баллы</div>
+                                </div>
+                                <div class="stage-option-arrow">
+                                    <i class="bi bi-chevron-right"></i>
+                                </div>
+                            </a>
+
+                            <!-- Монополия -->
+                            {% if monopoly %}
+                                <a href="{% url 'games:monopoly_host' monopoly.id %}"
+                                   class="stage-option {% if game.status != 'quiz' %}stage-option-disabled{% endif %}">
+                                    <div class="stage-option-icon bg-success-soft">
+                                        <i class="bi bi-dice-5-fill text-success"></i>
+                                    </div>
+                                    <div class="stage-option-body">
+                                        <div class="stage-option-title">
+                                            Монополия
+                                            <span class="badge bg-success-subtle text-success ms-1">
+                                                {{ monopoly.players.count }}
+                                            </span>
+                                        </div>
+                                        <div class="stage-option-desc">Броски кубика по карте</div>
+                                    </div>
+                                    <div class="stage-option-arrow">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </div>
+                                </a>
+                            {% else %}
+                                <a href="{% url 'games:monopoly_create' game.id %}"
+                                   class="stage-option {% if game.status != 'quiz' %}stage-option-disabled{% endif %}">
+                                    <div class="stage-option-icon bg-success-soft">
+                                        <i class="bi bi-dice-5 text-success"></i>
+                                    </div>
+                                    <div class="stage-option-body">
+                                        <div class="stage-option-title">Монополия</div>
+                                        <div class="stage-option-desc">Создать партию и пригласить учеников</div>
+                                    </div>
+                                    <div class="stage-option-arrow">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </div>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- РЕЗУЛЬТАТЫ -->
+                    <div class="control-stage control-stage-last">
                         <a href="{% url 'games:results' game.id %}"
-                           class="btn btn-outline-primary rounded-pill">
-                            <i class="bi bi-trophy"></i> Результаты
-                        </a>
-                        <a href="{% url 'games:list' %}"
-                           class="btn btn-link text-muted rounded-pill">
-                            ← Все игры
+                           class="btn btn-outline-primary w-100">
+                            <i class="bi bi-trophy"></i> Посмотреть результаты
                         </a>
                     </div>
+
+                    <!-- Все игры -->
+                    <div class="text-center mt-3 pt-3 border-top">
+                        <a href="{% url 'games:list' %}"
+                           class="btn btn-link text-muted p-0">
+                            <i class="bi bi-arrow-left"></i> Все игры
+                        </a>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -219,23 +278,143 @@
 }
 .question-item:last-child { border-bottom: none; }
 
-.pulse-btn {
-    animation: pulseBtn 1.5s ease-in-out infinite;
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+/* ============================================================
+   ЭТАПЫ УПРАВЛЕНИЯ
+   ============================================================ */
+.control-stage {
+    position: relative;
+    background: #fafaff;
+    border: 2px solid #f0eef8;
+    border-radius: 16px;
+    padding: 20px 18px;
+    margin-bottom: 14px;
 }
-@keyframes pulseBtn {
-    0% {
-        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
-        transform: scale(1);
-    }
-    50% {
-        box-shadow: 0 0 0 14px rgba(220, 53, 69, 0);
-        transform: scale(1.02);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
-        transform: scale(1);
-    }
+
+.control-stage-last {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-bottom: 0;
 }
+
+.stage-badge {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--brand);
+    color: white;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+}
+
+.stage-badge-2 {
+    background: var(--yellow);
+    color: #78350f;
+}
+
+.stage-title {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.stage-desc {
+    font-size: 12.5px;
+    color: #9a97ad;
+    font-weight: 600;
+    margin-bottom: 14px;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   ВАРИАНТЫ ВЫБОРА (этап 2)
+   ============================================================ */
+.stage-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stage-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: 2px solid #f0eef8;
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+
+.stage-option:hover {
+    border-color: var(--brand);
+    box-shadow: 0 6px 16px -6px rgba(124, 58, 237, 0.25);
+    transform: translateY(-1px);
+    color: inherit;
+}
+
+.stage-option-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.stage-option-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.stage-option-body {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.stage-option-title {
+    font-weight: 900;
+    font-size: 14.5px;
+    margin-bottom: 2px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+}
+
+.stage-option-desc {
+    font-size: 12px;
+    color: #9a97ad;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.stage-option-arrow {
+    color: #c4c2d4;
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.stage-option:hover .stage-option-arrow {
+    color: var(--brand);
+    transform: translateX(3px);
+}
+
+/* Фоны */
+.bg-warning-soft { background: #fff3d1; }
+.bg-success-soft { background: #dff5ea; }
 </style>
 {% endblock %}

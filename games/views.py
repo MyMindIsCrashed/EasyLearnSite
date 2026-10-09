@@ -12,6 +12,8 @@ from .models import (
     Game, Question, AnswerOption, StudentAnswer, GameSession,
     MonopolyGame, MonopolyPlayer,
     MONOPOLY_MAP, MONOPOLY_MAX_POSITION,
+    CARD_SHIELD, CARD_DOUBLE, CARD_SEVEN, CARD_INFO,
+    calc_card_prices,
 )
 from .forms import QuestionForm
 from scores.models import ScoreTransaction
@@ -139,10 +141,13 @@ def game_detail(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        MonopolyPlayer.objects.get_or_create(
-            monopoly=monopoly, student=request.user
+        player, _ = MonopolyPlayer.objects.get_or_create(
+            monopoly=monopoly, student=request.user,
+            defaults={'wallet_start': 0},
         )
         if monopoly.status in ['waiting', 'playing']:
+            if monopoly.status == 'waiting' and not player.card_type:
+                return redirect('games:monopoly_shop', monopoly_id=monopoly.id)
             return redirect('games:monopoly_play', monopoly_id=monopoly.id)
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
@@ -169,10 +174,13 @@ def game_play(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        MonopolyPlayer.objects.get_or_create(
-            monopoly=monopoly, student=request.user
+        player, _ = MonopolyPlayer.objects.get_or_create(
+            monopoly=monopoly, student=request.user,
+            defaults={'wallet_start': 0},
         )
         if monopoly.status in ['waiting', 'playing']:
+            if monopoly.status == 'waiting' and not player.card_type:
+                return redirect('games:monopoly_shop', monopoly_id=monopoly.id)
             return redirect('games:monopoly_play', monopoly_id=monopoly.id)
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
@@ -255,10 +263,13 @@ def quiz_done(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        MonopolyPlayer.objects.get_or_create(
-            monopoly=monopoly, student=request.user
+        player, _ = MonopolyPlayer.objects.get_or_create(
+            monopoly=monopoly, student=request.user,
+            defaults={'wallet_start': 0},
         )
         if monopoly.status in ['waiting', 'playing']:
+            if monopoly.status == 'waiting' and not player.card_type:
+                return redirect('games:monopoly_shop', monopoly_id=monopoly.id)
             return redirect('games:monopoly_play', monopoly_id=monopoly.id)
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
@@ -355,10 +366,13 @@ def maze_view(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        MonopolyPlayer.objects.get_or_create(
-            monopoly=monopoly, student=request.user
+        player, _ = MonopolyPlayer.objects.get_or_create(
+            monopoly=monopoly, student=request.user,
+            defaults={'wallet_start': 0},
         )
         if monopoly.status in ['waiting', 'playing']:
+            if monopoly.status == 'waiting' and not player.card_type:
+                return redirect('games:monopoly_shop', monopoly_id=monopoly.id)
             return redirect('games:monopoly_play', monopoly_id=monopoly.id)
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
@@ -555,11 +569,18 @@ def monopoly_create(request, game_id):
 
     sessions = game.sessions.all().order_by('joined_at')
     for s in sessions:
+        quiz_score = StudentAnswer.objects.filter(
+            student=s.student, question__game=game, is_correct=True
+        ).aggregate(t=Sum('question__points'))['t'] or 0
+
         MonopolyPlayer.objects.create(
-            monopoly=mon, student=s.student, position=0,
+            monopoly=mon, student=s.student,
+            position=0,
+            wallet_start=quiz_score,
+            has_extra_turn=False,
         )
 
-    messages.success(request, 'Монополия создана!')
+    messages.success(request, 'Монополия создана! Ученики выбирают карты')
     return redirect('games:monopoly_host', monopoly_id=mon.id)
 
 
@@ -614,36 +635,126 @@ def monopoly_join(request, game_id):
         return redirect('games:detail', game_id=game.id)
 
     mon = game.monopoly
-    MonopolyPlayer.objects.get_or_create(monopoly=mon, student=request.user)
 
-    messages.success(request, 'Вы подключились к Монополии!')
-    return redirect('games:monopoly_play', monopoly_id=mon.id)
+    quiz_score = StudentAnswer.objects.filter(
+        student=request.user, question__game=game, is_correct=True
+    ).aggregate(t=Sum('question__points'))['t'] or 0
 
-
-@login_required
-def monopoly_play(request, monopoly_id):
-    mon = get_object_or_404(MonopolyGame, pk=monopoly_id)
-
-    if mon.status == 'finished':
-        return redirect('games:monopoly_results', monopoly_id=mon.id)
-
-    player, _ = MonopolyPlayer.objects.get_or_create(
-        monopoly=mon, student=request.user
+    MonopolyPlayer.objects.get_or_create(
+        monopoly=mon, student=request.user,
+        defaults={'wallet_start': quiz_score, 'has_extra_turn': False},
     )
 
-    players = list(mon.players_ordered())
-    current = mon.current_player()
+    messages.success(request, 'Вы подключились к Монополии!')
+    return redirect('games:monopoly_shop', monopoly_id=mon.id)
 
-    return render(request, 'games/monopoly_play.html', {
+
+# ============================================================
+# МАГАЗИН КАРТ
+# ============================================================
+@login_required
+def monopoly_shop(request, monopoly_id):
+    mon = get_object_or_404(MonopolyGame, pk=monopoly_id)
+    if not request.user.is_student():
+        return redirect('games:list')
+
+    player, _ = MonopolyPlayer.objects.get_or_create(
+        monopoly=mon, student=request.user,
+        defaults={'wallet_start': 0},
+    )
+
+    if player.card_type:
+        if mon.status == 'waiting':
+            return redirect('games:monopoly_play', monopoly_id=mon.id)
+
+    max_score = mon.game.questions.aggregate(s=Sum('points'))['s'] or 0
+    prices = calc_card_prices(max_score)
+
+    quiz_score = StudentAnswer.objects.filter(
+        student=request.user, question__game=mon.game, is_correct=True
+    ).aggregate(t=Sum('question__points'))['t'] or 0
+
+    if player.wallet_start != quiz_score:
+        player.wallet_start = quiz_score
+        player.save()
+
+    cards = []
+    for card_id in [CARD_SHIELD, CARD_DOUBLE, CARD_SEVEN]:
+        info = CARD_INFO[card_id]
+        price = prices[card_id]
+        percent = int(round(price / max_score * 100)) if max_score else 0
+        cards.append({
+            'id': card_id,
+            'name': info['name'],
+            'emoji': info['emoji'],
+            'desc': info['desc'],
+            'price': price,
+            'percent': percent,
+            'affordable': player.wallet >= price,
+        })
+
+    return render(request, 'games/monopoly_shop.html', {
         'monopoly': mon,
         'player': player,
-        'players': players,
-        'current': current,
-        'map': MONOPOLY_MAP,
-        'max_position': MONOPOLY_MAX_POSITION,
+        'cards': cards,
+        'wallet': player.wallet,
+        'max_score': max_score,
+        'game': mon.game,
     })
 
 
+@login_required
+@require_POST
+def monopoly_buy_card(request, monopoly_id):
+    mon = get_object_or_404(MonopolyGame, pk=monopoly_id)
+    if not request.user.is_student():
+        return JsonResponse({'error': 'not_student'}, status=400)
+
+    player = get_object_or_404(
+        MonopolyPlayer, monopoly=mon, student=request.user
+    )
+
+    if player.card_type:
+        return JsonResponse({'error': 'already_bought'}, status=400)
+
+    card_type = request.POST.get('card_type', '')
+    if card_type not in [CARD_SHIELD, CARD_DOUBLE, CARD_SEVEN]:
+        return JsonResponse({'error': 'invalid_card'}, status=400)
+
+    max_score = mon.game.questions.aggregate(s=Sum('points'))['s'] or 0
+    prices = calc_card_prices(max_score)
+    price = prices[card_type]
+
+    if player.wallet < price:
+        return JsonResponse({
+            'error': 'not_enough_points',
+            'wallet': player.wallet,
+            'price': price,
+        }, status=400)
+
+    player.points_spent += price
+    player.card_type = card_type
+    player.card_used = False
+    player.save()
+
+    ScoreTransaction.objects.create(
+        student=request.user,
+        teacher=mon.game.created_by,
+        points=-price,
+        reason='manual',
+        comment=f'🛒 Карта: {CARD_INFO[card_type]["name"]}',
+    )
+
+    return JsonResponse({
+        'ok': True,
+        'card_type': card_type,
+        'wallet_after': player.wallet,
+    })
+
+
+# ============================================================
+# БРОСОК КУБИКА
+# ============================================================
 @login_required
 @require_POST
 def monopoly_roll(request, monopoly_id):
@@ -657,48 +768,86 @@ def monopoly_roll(request, monopoly_id):
     if player.is_finished:
         return JsonResponse({'error': 'already_finished'}, status=400)
 
-    dice = random.randint(1, 6)
+    applied_card = None
+
+    # ============ БРОСОК ============
+    if player.has_extra_turn:
+        player.has_extra_turn = False
+        applied_card = CARD_DOUBLE
+        dice = random.randint(1, 6)
+
+    elif player.card_type == CARD_SEVEN and not player.card_used:
+        dice = 7
+        applied_card = CARD_SEVEN
+        player.card_used = True
+
+    else:
+        dice = random.randint(1, 6)
+
     player.dice_value = dice
     old_pos = player.position
-    new_pos = min(old_pos + dice, MONOPOLY_MAX_POSITION)
-    player.position = new_pos
 
-    cell = MONOPOLY_MAP[new_pos]
-    cell_type = cell['type']
-    player.last_event = cell['label']
+    pos_after_dice = min(old_pos + dice, MONOPOLY_MAX_POSITION)
+    cell_after_dice = MONOPOLY_MAP[pos_after_dice]
+    cell_type_after_dice = cell_after_dice['type']
 
-    if cell_type == 'boost':
-        new_pos = min(new_pos + 3, MONOPOLY_MAX_POSITION)
-        player.position = new_pos
-        player.last_event = '⚡ Ускорение! +3'
+    final_pos = pos_after_dice
+    final_cell_type = cell_type_after_dice
+    modifier = 0
+    modifier_type = 'none'
 
-    elif cell_type == 'trap':
-        new_pos = max(new_pos - 2, 0)
-        player.position = new_pos
-        player.last_event = '💀 Ловушка! −2'
+    player.position = pos_after_dice
+    player.last_event = cell_after_dice['label']
 
-    elif cell_type == 'bonus':
-        player.bonus_points += 5
-        player.last_event = '🎁 Бонус +5!'
+    if cell_type_after_dice == 'boost':
+        modifier = cell_after_dice.get('effect', 3)
+        modifier_type = 'boost'
+        final_pos = min(pos_after_dice + modifier, MONOPOLY_MAX_POSITION)
+        player.position = final_pos
+        player.last_event = f'⚡ Ускорение +{modifier}'
+        final_cell_type = MONOPOLY_MAP[final_pos]['type']
+
+    elif cell_type_after_dice == 'trap':
+        modifier = cell_after_dice.get('effect', -2)
+        modifier_type = 'trap'
+
+        if player.card_type == CARD_SHIELD and not player.card_used:
+            player.card_used = True
+            modifier_type = 'shield'
+            final_pos = pos_after_dice
+            player.last_event = '🛡 Щит спас от ловушки!'
+        else:
+            final_pos = max(pos_after_dice + modifier, 0)
+            player.position = final_pos
+            player.last_event = f'💀 Ловушка {modifier}'
+            final_cell_type = MONOPOLY_MAP[final_pos]['type']
+
+    elif cell_type_after_dice == 'bonus':
+        bonus_value = cell_after_dice.get('effect', 5)
+        player.last_event = f'🎁 Бонус +{bonus_value}'
         ScoreTransaction.objects.create(
             student=player.student,
             teacher=mon.game.created_by,
-            points=5,
+            points=bonus_value,
             reason='manual',
             comment='🎁 Бонус в Монополии',
         )
 
-    elif cell_type == 'swap':
+    elif cell_type_after_dice == 'swap':
         others = [p for p in mon.players_ordered() if p.id != player.id]
         if others:
             last = others[-1]
             player.position, last.position = last.position, player.position
             last.save()
-        player.last_event = '🔄 Обмен местами!'
+            final_pos = player.position
+        player.last_event = '🔄 Обмен местами'
+        final_cell_type = MONOPOLY_MAP[final_pos]['type']
 
-    elif cell_type == 'finish':
+    if final_cell_type == 'finish' or player.position >= MONOPOLY_MAX_POSITION:
+        player.position = MONOPOLY_MAX_POSITION
         player.is_finished = True
         player.finished_at = timezone.now()
+        player.last_event = '🏆 ФИНИШ!'
         mon.status = 'finished'
         mon.finished_at = timezone.now()
         mon.save()
@@ -709,22 +858,31 @@ def monopoly_roll(request, monopoly_id):
             reason='manual',
             comment='🏆 Победа в Монополии',
         )
-        player.last_event = '🏆 ФИНИШ!'
+
+    if player.card_type == CARD_DOUBLE and not player.card_used:
+        player.card_used = True
+        player.has_extra_turn = True
 
     player.save()
 
-    if cell_type != 'finish':
+    if mon.status == 'playing' and not player.has_extra_turn:
         mon.next_turn()
 
     return JsonResponse({
         'dice': dice,
         'from': old_pos,
+        'pos_after_dice': pos_after_dice,
+        'cell_type_after_dice': cell_type_after_dice,
+        'cell_label_after_dice': cell_after_dice['label'],
+        'modifier_type': modifier_type,
+        'modifier': modifier,
         'to': player.position,
-        'cell_type': cell_type,
-        'cell_label': cell['label'],
-        'position': player.position,
-        'bonus_points': player.bonus_points,
+        'cell_type': final_cell_type,
+        'cell_label': MONOPOLY_MAP[player.position]['label'],
         'is_finished': player.is_finished,
+        'applied_card': applied_card,
+        'wallet': player.wallet,
+        'has_extra_turn': player.has_extra_turn,
     })
 
 
@@ -734,11 +892,17 @@ def monopoly_state(request, monopoly_id):
     players = list(mon.players_ordered())
     current = mon.current_player()
 
+    me = next((p for p in players if p.student_id == request.user.id), None)
+
     return JsonResponse({
         'status': mon.status,
         'turn_number': mon.turn_number,
         'current_player_id': current.id if current else None,
         'current_player_name': (current.student.get_full_name() or current.student.username) if current else None,
+        'my_wallet': me.wallet if me else 0,
+        'my_card_type': me.card_type if me else '',
+        'my_card_used': me.card_used if me else False,
+        'my_has_extra_turn': me.has_extra_turn if me else False,
         'players': [
             {
                 'id': p.id,
@@ -749,11 +913,44 @@ def monopoly_state(request, monopoly_id):
                 'position': p.position,
                 'dice_value': p.dice_value,
                 'last_event': p.last_event,
-                'bonus_points': p.bonus_points,
+                'card_type': p.card_type,
+                'card_used': p.card_used,
+                'has_extra_turn': p.has_extra_turn,
                 'is_finished': p.is_finished,
             }
             for p in players
         ],
+    })
+
+
+@login_required
+def monopoly_play(request, monopoly_id):
+    mon = get_object_or_404(MonopolyGame, pk=monopoly_id)
+
+    if mon.status == 'finished':
+        return redirect('games:monopoly_results', monopoly_id=mon.id)
+
+    player, _ = MonopolyPlayer.objects.get_or_create(
+        monopoly=mon, student=request.user,
+        defaults={'wallet_start': 0},
+    )
+
+    if mon.status == 'waiting' and not player.card_type:
+        return redirect('games:monopoly_shop', monopoly_id=mon.id)
+
+    players = list(mon.players_ordered())
+    current = mon.current_player()
+
+    card_info = CARD_INFO.get(player.card_type, None)
+
+    return render(request, 'games/monopoly_play.html', {
+        'monopoly': mon,
+        'player': player,
+        'players': players,
+        'current': current,
+        'map': MONOPOLY_MAP,
+        'max_position': MONOPOLY_MAX_POSITION,
+        'card_info': card_info,
     })
 
 

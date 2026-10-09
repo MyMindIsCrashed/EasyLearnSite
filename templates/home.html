@@ -12,7 +12,7 @@
 
             <div class="col-lg-6 reveal reveal-left">
                 <span class="badge-soft mb-3">
-                    <i class="bi bi-stars"></i> Платформа для 1-4 классов
+                    <i class="bi bi-stars"></i> Платформа для школьников и студентов
                 </span>
                 <h1 class="hero-title">
                     Учись играя!<br>
@@ -20,8 +20,8 @@
                     Становись лидером
                 </h1>
                 <p class="hero-lead">
-                    EasyLearnSite превращает обычный урок в захватывающую игру.
-                    Отвечай на вопросы, соревнуйся с одноклассниками и зарабатывай награды!
+                    EasyLearnSite превращает урок в захватывающую игру.
+                    Отвечай на вопросы, соревнуйся с однокурсниками и зарабатывай награды!
                 </p>
 
                 {% if not user.is_authenticated %}
@@ -32,7 +32,7 @@
                         </a>
                         <a href="{% url 'accounts:signup' %}?role=teacher"
                            class="btn btn-outline-primary btn-lg rounded-pill px-4 fw-bold">
-                            <i class="bi bi-person-workspace me-2"></i> Я учитель
+                            <i class="bi bi-person-workspace me-2"></i> Я преподаватель
                         </a>
                     </div>
                     <div class="d-flex align-items-center gap-3 mt-4 text-muted small flex-wrap">
@@ -56,7 +56,6 @@
 
             <div class="col-lg-6 reveal reveal-right">
                 <div class="hero-visual">
-                    <div class="hero-blob"></div>
                     <div class="stat-card stat-card-1 shadow-lg">
                         <div class="stat-emoji">🏆</div>
                         <div class="stat-text">
@@ -68,7 +67,7 @@
                         <div class="stat-emoji">⭐</div>
                         <div class="stat-text">
                             <div class="stat-value">1 место</div>
-                            <div class="stat-label">в классе</div>
+                            <div class="stat-label">в группе</div>
                         </div>
                     </div>
                     <div class="hero-center">
@@ -104,7 +103,7 @@
                         <i class="bi bi-person-plus-fill text-primary"></i>
                     </div>
                     <h4>Регистрируйся</h4>
-                    <p>Выбери роль — ученик или учитель. Всё быстро и без сложностей.</p>
+                    <p>Выбери роль — ученик или преподаватель. Всё быстро и без сложностей.</p>
                 </div>
             </div>
             <div class="col-md-4 reveal delay-2">
@@ -114,7 +113,7 @@
                         <i class="bi bi-controller text-warning"></i>
                     </div>
                     <h4>Играй на уроке</h4>
-                    <p>Учитель запускает игру, ты отвечаешь и получаешь баллы за каждый ответ.</p>
+                    <p>Преподаватель запускает игру, ты отвечаешь и получаешь баллы за каждый ответ.</p>
                 </div>
             </div>
             <div class="col-md-4 reveal delay-3">
@@ -124,7 +123,7 @@
                         <i class="bi bi-trophy-fill text-success"></i>
                     </div>
                     <h4>Становись лидером</h4>
-                    <p>Следи за рейтингом класса и получай награды от учителя!</p>
+                    <p>Следи за рейтингом и получай награды от преподавателя!</p>
                 </div>
             </div>
         </div>
@@ -138,7 +137,7 @@
         <div class="text-center mb-5 reveal">
             <span class="badge-soft mb-3"><i class="bi bi-heart"></i> Почему нам доверяют</span>
             <h2 class="section-title">Почему EasyLearnSite?</h2>
-            <p class="section-subtitle">Всё, что нужно для мотивации школьника</p>
+            <p class="section-subtitle">Всё, что нужно для мотивации</p>
         </div>
 
         <div class="row g-4">
@@ -157,7 +156,7 @@
                         <i class="bi bi-lightning-charge-fill text-warning"></i>
                     </div>
                     <h5>Мгновенный результат</h5>
-                    <p>Баллы начисляются сразу. Ребёнок видит прогресс в реальном времени.</p>
+                    <p>Баллы начисляются сразу. Прогресс виден в реальном времени.</p>
                 </div>
             </div>
             <div class="col-md-6 col-lg-3 reveal delay-3">
@@ -166,7 +165,7 @@
                         <i class="bi bi-trophy-fill text-success"></i>
                     </div>
                     <h5>Соревнование</h5>
-                    <p>Лидерборд мотивирует. Учитель сам решает, за что давать баллы.</p>
+                    <p>Лидерборд мотивирует. Преподаватель сам решает, за что давать баллы.</p>
                 </div>
             </div>
             <div class="col-md-6 col-lg-3 reveal delay-4">
@@ -184,31 +183,33 @@
 
 
 <!-- ==================== СТАТИСТИКА ==================== -->
-<section class="py-5 py-lg-6">
+<section class="stats-section">
     <div class="container">
-        <div class="row g-4 text-center">
-            <div class="col-6 col-md-3 reveal delay-1">
-                <div class="stat-big">
-                    <div class="stat-big-value text-primary">1-4</div>
-                    <div class="stat-big-label">классы</div>
+        <div class="stats-box reveal">
+            <div class="row g-4 text-center">
+                <div class="col-6 col-md-3">
+                    <div class="stat-big">
+                        <div class="stat-big-value text-primary">2</div>
+                        <div class="stat-big-label">режима игры</div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-6 col-md-3 reveal delay-2">
-                <div class="stat-big">
-                    <div class="stat-big-value text-warning">⚡</div>
-                    <div class="stat-big-label">мгновенно</div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-big">
+                        <div class="stat-big-value text-warning">⚡</div>
+                        <div class="stat-big-label">мгновенно</div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-6 col-md-3 reveal delay-3">
-                <div class="stat-big">
-                    <div class="stat-big-value text-success">100%</div>
-                    <div class="stat-big-label">бесплатно</div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-big">
+                        <div class="stat-big-value text-success">0</div>
+                        <div class="stat-big-label">установок</div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-6 col-md-3 reveal delay-4">
-                <div class="stat-big">
-                    <div class="stat-big-value text-info">∞</div>
-                    <div class="stat-big-label">игр и наград</div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-big">
+                        <div class="stat-big-value text-info">📱</div>
+                        <div class="stat-big-label">с любого устройства</div>
+                    </div>
                 </div>
             </div>
         </div>

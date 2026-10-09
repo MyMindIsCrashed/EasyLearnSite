@@ -122,32 +122,28 @@ class GameSession(models.Model):
 
     def generate_personal_maze(self):
         score = self.quiz_score
-        max_path = max(6, score - 3)
 
         if score <= 20:
-            size_pref = 7
+            size = 7
         elif score <= 40:
-            size_pref = 9
-        elif score <= 60:
-            size_pref = 11
+            size = 9
+        elif score <= 70:
+            size = 11
+        elif score <= 100:
+            size = 13
         else:
-            size_pref = 13
+            size = 15
 
-        for attempt in range(30):
-            size = size_pref + (attempt % 3) * 2
-            if size < 5:
-                size = 5
-            if size % 2 == 0:
-                size += 1
-            braid = 0.25 + (attempt * 0.02)
-            maze = self._build_maze(size, braid)
-            path_len = self._shortest_path_length(maze)
-            if path_len <= max_path:
-                self.maze_data = maze
-                self.save()
-                return maze
+        if score <= 20:
+            braid = 0.35
+        elif score <= 40:
+            braid = 0.30
+        elif score <= 70:
+            braid = 0.25
+        else:
+            braid = 0.20
 
-        maze = self._build_maze(7, 0.4)
+        maze = self._build_maze(size, braid)
         self.maze_data = maze
         self.save()
         return maze
@@ -243,33 +239,75 @@ def is_maze_solvable(maze):
 
 
 # ============================================================
-# МОНОПОЛИЯ — карта БЕЗ клетки "question"
+# МОНОПОЛИЯ
 # ============================================================
 MONOPOLY_MAP = [
-    {'type': 'start', 'label': '🎲 Старт',      'icon': '🎲'},
-    {'type': 'empty', 'label': 'Пустая',        'icon': '⬜'},
-    {'type': 'bonus', 'label': 'Бонус +5',      'icon': '🎁'},
-    {'type': 'boost', 'label': 'Ускорение +3',  'icon': '⚡'},
-    {'type': 'empty', 'label': 'Пустая',        'icon': '⬜'},
-    {'type': 'trap',  'label': 'Ловушка −2',    'icon': '💀'},
-    {'type': 'bonus', 'label': 'Бонус +5',      'icon': '🎁'},
-    {'type': 'bonus', 'label': 'Бонус +5',      'icon': '🎁'},
-    {'type': 'empty', 'label': 'Пустая',        'icon': '⬜'},
-    {'type': 'boost', 'label': 'Ускорение +2',  'icon': '⚡'},
-    {'type': 'swap',  'label': 'Обмен местами', 'icon': '🔄'},
-    {'type': 'empty', 'label': 'Пустая',        'icon': '⬜'},
-    {'type': 'bonus', 'label': 'Бонус +5',      'icon': '🎁'},
-    {'type': 'boost', 'label': 'Ускорение +3',  'icon': '⚡'},
-    {'type': 'trap',  'label': 'Ловушка −2',    'icon': '💀'},
-    {'type': 'bonus', 'label': 'Бонус +5',      'icon': '🎁'},
-    {'type': 'empty', 'label': 'Пустая',        'icon': '⬜'},
-    {'type': 'bonus', 'label': 'Бонус +5',      'icon': '🎁'},
-    {'type': 'boost', 'label': 'Ускорение +2',  'icon': '⚡'},
-    {'type': 'finish', 'label': '🏁 Финиш',     'icon': '🏁'},
+    {'type': 'start', 'label': '🎲 Старт',       'icon': '🎲', 'effect': 0},
+    {'type': 'empty', 'label': 'Пустая',         'icon': '⬜', 'effect': 0},
+    {'type': 'bonus', 'label': 'Бонус +5',       'icon': '🎁', 'effect': 5},
+    {'type': 'boost', 'label': 'Ускорение +3',   'icon': '⚡', 'effect': 3},
+    {'type': 'empty', 'label': 'Пустая',         'icon': '⬜', 'effect': 0},
+    {'type': 'trap',  'label': 'Ловушка −2',     'icon': '💀', 'effect': -2},
+    {'type': 'bonus', 'label': 'Бонус +5',       'icon': '🎁', 'effect': 5},
+    {'type': 'bonus', 'label': 'Бонус +5',       'icon': '🎁', 'effect': 5},
+    {'type': 'empty', 'label': 'Пустая',         'icon': '⬜', 'effect': 0},
+    {'type': 'boost', 'label': 'Ускорение +2',   'icon': '⚡', 'effect': 2},
+    {'type': 'swap',  'label': 'Обмен местами',  'icon': '🔄', 'effect': 0},
+    {'type': 'empty', 'label': 'Пустая',         'icon': '⬜', 'effect': 0},
+    {'type': 'bonus', 'label': 'Бонус +5',       'icon': '🎁', 'effect': 5},
+    {'type': 'boost', 'label': 'Ускорение +3',   'icon': '⚡', 'effect': 3},
+    {'type': 'trap',  'label': 'Ловушка −2',     'icon': '💀', 'effect': -2},
+    {'type': 'bonus', 'label': 'Бонус +5',       'icon': '🎁', 'effect': 5},
+    {'type': 'empty', 'label': 'Пустая',         'icon': '⬜', 'effect': 0},
+    {'type': 'bonus', 'label': 'Бонус +5',       'icon': '🎁', 'effect': 5},
+    {'type': 'boost', 'label': 'Ускорение +2',   'icon': '⚡', 'effect': 2},
+    {'type': 'finish', 'label': '🏁 Финиш',      'icon': '🏁', 'effect': 0},
 ]
 MONOPOLY_MAX_POSITION = len(MONOPOLY_MAP) - 1
-MONOPOLY_MAX_TURNS = 50
-MONOPOLY_MAX_PLAYERS = 6
+
+
+CARD_SHIELD = 'shield'
+CARD_DOUBLE = 'double'
+CARD_SEVEN = 'seven'
+
+CARD_INFO = {
+    CARD_SHIELD: {
+        'name': 'Защита от ловушек',
+        'emoji': '🛡',
+        'desc': 'Первая ловушка на пути не отбросит тебя назад',
+    },
+    CARD_DOUBLE: {
+        'name': 'Двойной бросок',
+        'emoji': '🎲',
+        'desc': 'После первого броска сможешь бросить ещё раз',
+    },
+    CARD_SEVEN: {
+        'name': 'Бросок на 7',
+        'emoji': '⚡',
+        'desc': 'Первый ход — кубик покажет ровно 7',
+    },
+}
+
+
+def calc_card_prices(max_possible_score):
+    """
+    Цены карт — проценты от МАКСИМУМА баллов за квиз.
+    - Двойной ход: 90%
+    - Ход на 7:    75%
+    - Защита:      50%
+
+    Возвращает словарь: {card_id: price}
+    """
+    base = max(max_possible_score, 10)
+
+    def clamp(v):
+        return max(5, min(200, int(round(v))))
+
+    return {
+        CARD_SHIELD: clamp(base * 0.50),
+        CARD_SEVEN:  clamp(base * 0.75),
+        CARD_DOUBLE: clamp(base * 0.90),
+    }
 
 
 class MonopolyGame(models.Model):
@@ -330,8 +368,20 @@ class MonopolyPlayer(models.Model):
     position = models.PositiveIntegerField('Позиция', default=0)
     dice_value = models.PositiveSmallIntegerField('Последний кубик', default=0)
     last_event = models.CharField('Последнее событие', max_length=100, blank=True)
-    bonus_points = models.IntegerField('Бонусные баллы', default=0)
-    question_pending = models.BooleanField('Ждёт вопрос', default=False)
+
+    wallet_start = models.IntegerField('Баллы на старте партии', default=0)
+    points_spent = models.IntegerField('Потрачено в партии', default=0)
+
+    card_type = models.CharField(
+        'Карта', max_length=20, blank=True, default='',
+        choices=[(CARD_SHIELD, '🛡 Защита'),
+                 (CARD_DOUBLE, '🎲 Двойной бросок'),
+                 (CARD_SEVEN, '⚡ Бросок на 7'),
+                 ('', 'Не куплена')]
+    )
+    card_used = models.BooleanField('Карта использована', default=False)
+    has_extra_turn = models.BooleanField('Есть доп. ход', default=False)
+
     is_finished = models.BooleanField('Дошёл до финиша', default=False)
     finished_at = models.DateTimeField('Финиш', null=True, blank=True)
     joined_at = models.DateTimeField('Подключился', auto_now_add=True)
@@ -345,22 +395,6 @@ class MonopolyPlayer(models.Model):
     def __str__(self):
         return f"{self.student.username} @ {self.monopoly.game.title}"
 
-    def move_forward(self, steps):
-        self.position = min(self.position + steps, MONOPOLY_MAX_POSITION)
-        self.save()
-        self._check_finish()
-
-    def move_back(self, steps):
-        self.position = max(self.position - steps, 0)
-        self.save()
-
-    def set_position(self, new_pos):
-        self.position = max(0, min(new_pos, MONOPOLY_MAX_POSITION))
-        self.save()
-        self._check_finish()
-
-    def _check_finish(self):
-        if self.position >= MONOPOLY_MAX_POSITION and not self.is_finished:
-            self.is_finished = True
-            self.finished_at = timezone.now()
-            self.save()
+    @property
+    def wallet(self):
+        return max(0, self.wallet_start - self.points_spent)
