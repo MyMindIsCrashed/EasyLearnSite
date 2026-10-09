@@ -1,15 +1,128 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block title %}Игры — EasyLearnSite{% endblock %}
+
 {% block content %}
-<h1>Игры</h1>
-{% if user.is_teacher %}<a href="{% url 'games:create' %}" class="btn">+ Создать игру</a>{% endif %}
-<ul>
-{% for g in games %}
-    <li>
-        <a href="{% url 'games:detail' g.id %}">{{ g.title }}</a>
-        {% if g.is_active %}🟢{% else %}⚪{% endif %}
-    </li>
-{% empty %}
-    <li>Игр пока нет</li>
-{% endfor %}
-</ul>
+<div class="container py-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="section-title mb-1">
+                <i class="bi bi-controller text-primary"></i> Игры
+            </h1>
+            <p class="text-muted mb-0">
+                {% if user.is_teacher %}
+                    Создавай игры и запускай их на уроке
+                {% else %}
+                    Подключайся по PIN или выбирай активную игру
+                {% endif %}
+            </p>
+        </div>
+
+        {% if user.is_teacher %}
+            <a href="{% url 'games:create' %}" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-plus-circle me-2"></i> Создать игру
+            </a>
+        {% else %}
+            <a href="{% url 'games:join' %}" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-key me-2"></i> Ввести PIN
+            </a>
+        {% endif %}
+    </div>
+
+    {% if games %}
+        <div class="row g-4">
+            {% for g in games %}
+                <div class="col-md-6 col-lg-4" data-aos="fade-up">
+                    <a href="{% url 'games:detail' g.id %}" class="text-decoration-none">
+                        <div class="game-card h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="game-card-emoji">🎮</div>
+                                {% if g.status == 'waiting' %}
+                                    <span class="badge bg-secondary-subtle text-secondary border rounded-pill">
+                                        Ожидание
+                                    </span>
+                                {% elif g.status == 'quiz' %}
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill">
+                                        <i class="bi bi-circle-fill" style="font-size:8px"></i> Квиз
+                                    </span>
+                                {% elif g.status == 'maze' %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill">
+                                        <i class="bi bi-circle-fill" style="font-size:8px"></i> Лабиринт
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success-subtle text-success border rounded-pill">
+                                        Завершена
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <h5 class="mb-2 text-dark">{{ g.title }}</h5>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-people"></i> {{ g.school_class.name }}
+                            </p>
+
+                            <div class="d-flex justify-content-between text-muted small pt-3 border-top">
+                                <span><i class="bi bi-question-circle"></i> {{ g.questions.count }} вопросов</span>
+                                {% if user.is_teacher %}
+                                    <span><i class="bi bi-key"></i> PIN: <strong>{{ g.pin_code }}</strong></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state text-center py-5">
+            <div class="empty-emoji mb-3">🎲</div>
+            <h4>Игр пока нет</h4>
+            <p class="text-muted">
+                {% if user.is_teacher %}
+                    Создай первую игру, чтобы начать!
+                {% else %}
+                    Подожди, пока учитель создаст игру, или введи PIN.
+                {% endif %}
+            </p>
+            {% if user.is_teacher %}
+                <a href="{% url 'games:create' %}" class="btn btn-primary rounded-pill px-4 mt-3">
+                    <i class="bi bi-plus-circle me-2"></i> Создать игру
+                </a>
+            {% else %}
+                <a href="{% url 'games:join' %}" class="btn btn-primary rounded-pill px-4 mt-3">
+                    <i class="bi bi-key me-2"></i> Ввести PIN
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+</div>
+
+<style>
+.game-card {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    border: 1px solid #e5e7f5;
+    transition: all 0.25s;
+    height: 100%;
+}
+.game-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px -16px rgba(99,102,241,0.2);
+    border-color: rgba(99,102,241,0.3);
+}
+.game-card-emoji {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+.empty-emoji { font-size: 80px; }
+</style>
 {% endblock %}

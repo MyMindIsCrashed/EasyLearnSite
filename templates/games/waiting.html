@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5 text-center">
+    <div class="display-1 mb-3">⏳</div>
+    <h1 class="fw-bold">Ждём учителя…</h1>
+    <p class="lead text-muted mb-4">{{ game.title }}</p>
+
+    {% if game.monopoly %}
+        <div class="alert alert-success rounded-4 mx-auto d-flex align-items-center gap-3"
+             style="max-width: 480px;">
+            <div style="font-size: 32px;">🎲</div>
+            <div class="text-start">
+                <strong>Монополия уже создана!</strong><br>
+                <span class="small">Заходи в игру по кнопке ниже</span>
+            </div>
+        </div>
+
+        <a href="{% url 'games:monopoly_join' game.id %}"
+           class="btn btn-success btn-lg rounded-pill px-5 fw-bold shadow-sm">
+            🎲 Войти в Монополию
+        </a>
+    {% else %}
+        <div class="spinner-border text-primary mb-4" role="status"></div>
+
+        <div class="card border-0 shadow-sm rounded-4 mx-auto" style="max-width: 400px;">
+            <div class="card-body p-4">
+                <p class="text-muted small mb-0">
+                    Как только учитель запустит игру, страница обновится автоматически
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+    <meta http-equiv="refresh" content="4">
+</div>
+{% endblock %}

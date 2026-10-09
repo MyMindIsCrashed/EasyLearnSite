@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Монополия — {{ game.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="h3 fw-bold mb-1">🎲 Монополия: {{ game.title }}</h1>
+            <p class="text-muted mb-0">
+                PIN: <strong>{{ game.pin_code }}</strong> ·
+                Игроков: {{ players|length }} ·
+                Ход #<span id="turn-number">{{ monopoly.turn_number }}</span> ·
+                {% if monopoly.status == 'waiting' %}<span class="badge bg-secondary">Ожидание</span>
+                {% elif monopoly.status == 'playing' %}<span class="badge bg-info">Игра идёт</span>
+                {% else %}<span class="badge bg-success">Завершена</span>{% endif %}
+            </p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            {% if monopoly.status == 'waiting' and players|length >= 2 %}
+                <a href="{% url 'games:monopoly_start' monopoly.id %}"
+                   class="btn btn-primary btn-lg rounded-pill px-4 fw-bold">
+                    <i class="bi bi-play-fill"></i> Начать игру
+                </a>
+            {% elif monopoly.status == 'playing' or monopoly.status == 'finished' %}
+                <a href="{% url 'games:monopoly_results' monopoly.id %}"
+                   class="btn btn-outline-primary rounded-pill px-4">
+                    🏆 Результаты
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if monopoly.status == 'waiting' %}
+        <div class="alert alert-info rounded-4 d-flex align-items-center gap-3">
+            <i class="bi bi-info-circle-fill fs-3"></i>
+            <div>
+                Скажи ученикам PIN: <strong class="fs-5">{{ game.pin_code }}</strong><br>
+                Нужно минимум <strong>2 игрока</strong>. Сейчас: {{ players|length }}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3 p-md-4">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-map text-primary"></i> Карта
+            </h5>
+            <div class="monopoly-map" id="map"></div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-people-fill text-primary"></i> Игроки
+                · Ход: <span class="text-primary fw-bold" id="current-player-name">—</span>
+            </h5>
+            <div class="row g-3" id="players-list"></div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.monopoly-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+.map-cell {
+    background: #f8f9ff;
+    border-radius: 14px;
+    padding: 12px;
+    border: 2px solid #e5e7f5;
+    position: relative;
+    min-height: 110px;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+.map-cell-num {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 700;
+}
+.map-cell-icon { font-size: 26px; margin-bottom: 4px; line-height: 1; }
+.map-cell-label {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #4b5563;
+}
+.map-cell-players {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: auto;
+    padding-top: 8px;
+}
+.map-player-chip {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 6px -2px rgba(99,102,241,0.5);
+    border: 2px solid #6366f1;
+    overflow: hidden;
+}
+.map-player-chip img { width: 100%; height: 100%; object-fit: cover; }
+.map-start    { background: linear-gradient(135deg, #bbf7d0, #86efac); }
+.map-finish   { background: linear-gradient(135deg, #fde68a, #fbbf24); }
+.map-question { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+.map-boost    { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+.map-trap     { background: linear-gradient(135deg, #fecaca, #fca5a5); }
+.map-bonus    { background: linear-gradient(135deg, #e9d5ff, #d8b4fe); }
+.map-swap     { background: linear-gradient(135deg, #cffafe, #a5f3fc); }
+
+.player-card {
+    background: #f8f9ff;
+    border-radius: 16px;
+    padding: 16px;
+    border: 2px solid #e5e7f5;
+    transition: all 0.2s;
+}
+.player-card.current-turn {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    background: #eef2ff;
+}
+</style>
+
+<script>
+const MONOPOLY_ID = {{ monopoly.id }};
+const MAP = {{ map|safe }};
+const MAP_LENGTH = {{ max_position }};
+
+const mapEl = document.getElementById('map');
+const playersListEl = document.getElementById('players-list');
+
+function renderMap(players) {
+    mapEl.innerHTML = '';
+    for (let i = 0; i <= MAP_LENGTH; i++) {
+        const cell = MAP[i];
+        const cellEl = document.createElement('div');
+        cellEl.className = `map-cell map-${cell.type}`;
+
+        const num = document.createElement('div');
+        num.className = 'map-cell-num';
+        num.textContent = i;
+        cellEl.appendChild(num);
+
+        const icon = document.createElement('div');
+        icon.className = 'map-cell-icon';
+        icon.textContent = cell.icon;
+        cellEl.appendChild(icon);
+
+        const label = document.createElement('div');
+        label.className = 'map-cell-label';
+        label.textContent = cell.label;
+        cellEl.appendChild(label);
+
+        const box = document.createElement('div');
+        box.className = 'map-cell-players';
+        box.id = 'players-' + i;
+        cellEl.appendChild(box);
+
+        mapEl.appendChild(cellEl);
+    }
+
+    players.forEach(p => {
+        const box = document.getElementById('players-' + p.position);
+        if (!box) return;
+        const chip = document.createElement('div');
+        chip.className = 'map-player-chip';
+        chip.title = p.name;
+        if (p.avatar) chip.innerHTML = `<img src="${p.avatar}" alt="">`;
+        else chip.textContent = p.emoji || '🧑';
+        box.appendChild(chip);
+    });
+}
+
+function renderPlayers(players, currentId) {
+    playersListEl.innerHTML = '';
+
+    players.forEach(p => {
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4';
+
+        let avatarHtml;
+        if (p.avatar) {
+            avatarHtml = `<img src="${p.avatar}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid white;box-shadow:0 2px 8px -2px rgba(99,102,241,0.3);">`;
+        } else {
+            avatarHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;font-size:36px;border-radius:50%;background:linear-gradient(135deg,#eef2ff,#fce7f3);border:2px solid white;">${p.emoji}</span>`;
+        }
+
+        const isCurrent = p.id === currentId;
+        const cardClass = 'player-card' + (isCurrent ? ' current-turn' : '');
+
+        col.innerHTML = `
+            <div class="${cardClass}">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    ${avatarHtml}
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${p.name}</div>
+                        <div class="small text-muted">
+                            Позиция: <strong>${p.position}</strong>
+                            · Бонус: <strong>${p.bonus_points}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-muted">${p.last_event || ''}</div>
+            </div>
+        `;
+        playersListEl.appendChild(col);
+    });
+}
+
+function refreshState() {
+    fetch("{% url 'games:monopoly_state' monopoly.id %}")
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('turn-number').textContent = data.turn_number;
+            document.getElementById('current-player-name').textContent = data.current_player_name || '—';
+
+            renderMap(data.players);
+            renderPlayers(data.players, data.current_player_id);
+
+            if (data.status === 'finished') {
+                setTimeout(() => {
+                    window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
+                }, 2000);
+            }
+        })
+        .catch(e => console.error('state error', e));
+}
+
+refreshState();
+setInterval(refreshState, 1500);
+</script>
+{% endblock %}

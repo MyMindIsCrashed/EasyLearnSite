@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}
+    {% if mode == 'edit' %}Редактирование вопроса{% else %}Новый вопрос{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 fw-bold mb-1">
+                        {% if mode == 'edit' %}✏️ Редактировать вопрос{% else %}➕ Новый вопрос{% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        Игра: <strong>{{ game.title }}</strong>
+                    </p>
+                </div>
+                <a href="{% url 'games:manage' game.id %}" class="btn btn-link text-muted">
+                    ← Назад
+                </a>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger rounded-3">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <!-- ТЕКСТ ВОПРОСА -->
+                <div class="card border-0 shadow-sm rounded-4 mb-3">
+                    <div class="card-body p-4">
+                        <label class="form-label fw-bold fs-5 mb-2">
+                            <i class="bi bi-question-circle text-primary"></i>
+                            {{ form.text.label }}
+                        </label>
+                        {{ form.text }}
+                        {% if form.text.errors %}
+                            <div class="text-danger small mt-2">{{ form.text.errors|join:", " }}</div>
+                        {% endif %}
+
+                        <div class="row g-3 mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small">
+                                    {{ form.points.label }}
+                                </label>
+                                {{ form.points }}
+                                <div class="form-text">Сколько баллов получит ученик за верный ответ</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ВАРИАНТЫ ОТВЕТА -->
+                <div class="card border-0 shadow-sm rounded-4 mb-3">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-1">
+                            <i class="bi bi-list-check text-primary"></i> Варианты ответа
+                        </h5>
+                        <p class="text-muted small mb-3">
+                            Заполни минимум 2 варианта. Отметь правильный радио-кнопкой.
+                        </p>
+
+                        {% for i in "1234" %}
+                            {% with field=form|dictsort:0 %}
+                            {% endwith %}
+                        {% endfor %}
+
+                        {% for i in "1234" %}
+                            {% with option_field=form|default:"" %}
+                            {% endwith %}
+                        {% endfor %}
+
+                        {% for i in "1234" %}
+                            {% cycle '1' '2' '3' '4' as idx silent %}
+                        {% endfor %}
+
+                        <!-- Ручной вывод 4 вариантов -->
+                        {% with opt1=form.option_1 opt2=form.option_2 opt3=form.option_3 opt4=form.option_4 %}
+
+                        <div class="option-row">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="correct" value="1" id="id_correct_1"
+                                           {% if form.correct.value == '1' %}checked{% endif %}>
+                                </div>
+                                <div class="flex-grow-1">
+                                    {{ opt1 }}
+                                    {% if opt1.errors %}
+                                        <div class="text-danger small mt-1">{{ opt1.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="correct" value="2" id="id_correct_2"
+                                           {% if form.correct.value == '2' %}checked{% endif %}>
+                                </div>
+                                <div class="flex-grow-1">
+                                    {{ opt2 }}
+                                    {% if opt2.errors %}
+                                        <div class="text-danger small mt-1">{{ opt2.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="correct" value="3" id="id_correct_3"
+                                           {% if form.correct.value == '3' %}checked{% endif %}>
+                                </div>
+                                <div class="flex-grow-1">
+                                    {{ opt3 }}
+                                    {% if opt3.errors %}
+                                        <div class="text-danger small mt-1">{{ opt3.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="correct" value="4" id="id_correct_4"
+                                           {% if form.correct.value == '4' %}checked{% endif %}>
+                                </div>
+                                <div class="flex-grow-1">
+                                    {{ opt4 }}
+                                    {% if opt4.errors %}
+                                        <div class="text-danger small mt-1">{{ opt4.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% endwith %}
+
+                        <div class="alert alert-info small mt-3 mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Отметь <strong>правильный ответ</strong> кружочком слева. За него ученик получит баллы.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- КНОПКИ -->
+                <div class="d-flex gap-2 justify-content-end">
+                    <a href="{% url 'games:manage' game.id %}"
+                       class="btn btn-outline-secondary rounded-pill px-4">
+                        Отмена
+                    </a>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                        <i class="bi bi-check-circle me-2"></i>
+                        {% if mode == 'edit' %}Сохранить{% else %}Добавить вопрос{% endif %}
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.option-row {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f5;
+}
+.option-row:last-child { border-bottom: none; }
+.option-row .form-check-input {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    cursor: pointer;
+}
+.option-row .form-check-input:checked {
+    background-color: #6366f1;
+    border-color: #6366f1;
+}
+.option-row input[type="text"] {
+    padding: 10px 16px;
+    font-size: 16px;
+    border-radius: 10px;
+}
+</style>
+{% endblock %}

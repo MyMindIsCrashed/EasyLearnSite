@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ game.title }} — управление{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <!-- ЗАГОЛОВОК + PIN -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h1 class="h2 fw-bold mb-2">{{ game.title }}</h1>
+                    <p class="text-muted mb-0">
+                        Класс: {{ game.school_class.name }} ·
+                        Вопросов: {{ game.questions.count }} ·
+                        Учеников: {{ game.sessions.count }}
+                    </p>
+                </div>
+                <div class="text-center">
+                    <div class="text-muted small mb-1">PIN-код для учеников</div>
+                    <div class="display-4 fw-bold text-primary" style="letter-spacing: 6px;">
+                        {{ game.pin_code }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <!-- ВОПРОСЫ -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">
+                            <i class="bi bi-1-circle-fill text-primary"></i> Вопросы
+                            <span class="badge bg-primary-subtle text-primary ms-1">{{ game.questions.count }}</span>
+                        </h5>
+                        <a href="{% url 'games:question_add' game.id %}"
+                           class="btn btn-primary rounded-pill btn-sm px-3">
+                            <i class="bi bi-plus-lg me-1"></i> Добавить
+                        </a>
+                    </div>
+
+                    {% if game.questions.count %}
+                        <div class="questions-list">
+                            {% for q in game.questions.all %}
+                                <div class="question-item">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                                <span class="badge bg-primary-subtle text-primary">#{{ q.order }}</span>
+                                                <span class="badge bg-warning-subtle text-warning">{{ q.points }} б.</span>
+                                            </div>
+                                            <div class="fw-semibold">{{ q.text }}</div>
+                                            {% if q.options.count %}
+                                                <div class="small text-muted mt-1">
+                                                    {% for opt in q.options.all %}
+                                                        <span class="{% if opt.is_correct %}text-success fw-bold{% endif %}">
+                                                            {% if opt.is_correct %}✅ {% endif %}{{ opt.text }}
+                                                        </span>{% if not forloop.last %} · {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <a href="{% url 'games:question_edit' q.id %}"
+                                               class="btn btn-sm btn-outline-primary rounded-circle">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form method="post"
+                                                  action="{% url 'games:question_delete' q.id %}"
+                                                  onsubmit="return confirm('Удалить вопрос?');"
+                                                  style="display:inline">
+                                                {% csrf_token %}
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-danger rounded-circle">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <div style="font-size: 48px;">📝</div>
+                            <p class="text-muted mb-3">Пока нет вопросов</p>
+                            <a href="{% url 'games:question_add' game.id %}"
+                               class="btn btn-primary rounded-pill px-4">
+                                <i class="bi bi-plus-lg me-2"></i> Добавить первый вопрос
+                            </a>
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+
+        <!-- УПРАВЛЕНИЕ -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-2-circle-fill text-primary"></i> Управление
+                    </h5>
+
+                    <p class="mb-3">Статус:
+                        {% if game.status == 'waiting' %}
+                            <span class="badge bg-secondary">Ожидание</span>
+                        {% elif game.status == 'quiz' %}
+                            <span class="badge bg-info">Квиз идёт</span>
+                        {% elif game.status == 'maze' %}
+                            <span class="badge bg-warning">Лабиринт</span>
+                        {% else %}
+                            <span class="badge bg-success">Завершена</span>
+                        {% endif %}
+                    </p>
+
+                    <div class="d-grid gap-2">
+
+                        {% if game.questions.count < 3 %}
+                            <div class="alert alert-danger small mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                                <div>
+                                    Нужно минимум <strong>3 вопроса</strong>.<br>
+                                    Сейчас: <strong>{{ game.questions.count }}</strong>
+                                </div>
+                            </div>
+                            <a href="{% url 'games:question_add' game.id %}"
+                               class="btn btn-danger rounded-pill fw-bold pulse-btn">
+                                <i class="bi bi-plus-circle-fill me-2"></i>
+                                Добавить вопрос
+                            </a>
+                            <button class="btn btn-secondary rounded-pill" disabled>
+                                <i class="bi bi-play-fill"></i> Запустить квиз
+                            </button>
+                        {% elif game.status != 'waiting' %}
+                            <button class="btn btn-secondary rounded-pill" disabled>
+                                <i class="bi bi-play-fill"></i> Квиз уже идёт
+                            </button>
+                        {% else %}
+                            <a href="{% url 'games:start_quiz' game.id %}"
+                               class="btn btn-info text-white rounded-pill">
+                                <i class="bi bi-play-fill"></i> Запустить квиз
+                            </a>
+                        {% endif %}
+
+                        <a href="{% url 'games:start_maze' game.id %}"
+                           class="btn btn-warning rounded-pill {% if game.status != 'quiz' %}disabled{% endif %}">
+                            <i class="bi bi-grid-3x3-gap-fill"></i> Начать лабиринт
+                        </a>
+
+                        <!-- МОНОПОЛИЯ -->
+                        {% if monopoly %}
+                            <a href="{% url 'games:monopoly_host' monopoly.id %}"
+                               class="btn btn-success rounded-pill">
+                                🎲 Монополия
+                                <span class="badge bg-white text-success ms-1">{{ monopoly.players.count }}</span>
+                            </a>
+                        {% else %}
+                            <a href="{% url 'games:monopoly_create' game.id %}"
+                               class="btn btn-outline-success rounded-pill">
+                                🎲 Создать Монополию
+                            </a>
+                        {% endif %}
+
+                        <a href="{% url 'games:results' game.id %}"
+                           class="btn btn-outline-primary rounded-pill">
+                            <i class="bi bi-trophy"></i> Результаты
+                        </a>
+                        <a href="{% url 'games:list' %}"
+                           class="btn btn-link text-muted rounded-pill">
+                            ← Все игры
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОДКЛЮЧИЛИСЬ -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-people-fill text-primary"></i> Подключились
+                <span class="badge bg-primary-subtle text-primary">{{ game.sessions.count }}</span>
+            </h5>
+            {% if game.sessions.count %}
+                <div class="row g-2">
+                    {% for s in game.sessions.all %}
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 bg-light rounded-3 d-flex align-items-center gap-2">
+                                {% include 'includes/avatar.html' with user=s.student size=32 %}
+                                <span class="small text-truncate">
+                                    {{ s.student.get_full_name|default:s.student.username }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">
+                    Пока никто не подключился.
+                    Скажи ученикам PIN: <strong class="fs-5">{{ game.pin_code }}</strong>
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<style>
+.question-item {
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f0f5;
+}
+.question-item:last-child { border-bottom: none; }
+
+.pulse-btn {
+    animation: pulseBtn 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+}
+@keyframes pulseBtn {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 14px rgba(220, 53, 69, 0);
+        transform: scale(1.02);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        transform: scale(1);
+    }
+}
+</style>
+{% endblock %}

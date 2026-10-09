@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Монополия — результаты{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="text-center mb-5">
+        <div class="display-1">🏆</div>
+        <h1 class="fw-bold">Монополия завершена!</h1>
+        <p class="text-muted">{{ monopoly.game.title }}</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        {% for p in players %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 h-100 {% if forloop.counter == 1 %}border-warning border-3{% endif %}">
+                    <div class="card-body p-4 text-center">
+                        <div class="mb-2">
+                            {% include 'includes/avatar.html' with user=p.student size=72 %}
+                        </div>
+
+                        {% if forloop.counter == 1 %}<div class="display-4">🥇</div>
+                        {% elif forloop.counter == 2 %}<div class="display-4">🥈</div>
+                        {% elif forloop.counter == 3 %}<div class="display-4">🥉</div>
+                        {% else %}<div class="display-4">🎮</div>{% endif %}
+
+                        <h4 class="fw-bold mb-1 mt-2">
+                            {{ p.student.get_full_name|default:p.student.username }}
+                        </h4>
+
+                        <p class="text-muted small mb-3">
+                            {% if p.is_finished %}
+                                ✅ Дошёл до финиша
+                            {% else %}
+                                Остановился на клетке {{ p.position }}
+                            {% endif %}
+                        </p>
+
+                        <div class="row text-center g-2">
+                            <div class="col-6">
+                                <div class="bg-light rounded-3 p-2">
+                                    <div class="fw-bold text-primary">{{ p.position }}</div>
+                                    <div class="small text-muted">позиция</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-light rounded-3 p-2">
+                                    <div class="fw-bold text-success">+{{ p.bonus_points }}</div>
+                                    <div class="small text-muted">бонус</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if user.is_teacher %}
+        <div class="text-center mt-5">
+            <a href="{% url 'games:manage' monopoly.game.id %}" class="btn btn-outline-primary rounded-pill px-4">
+                ← К управлению игрой
+            </a>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

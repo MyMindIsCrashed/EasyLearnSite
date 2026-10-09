@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Результаты{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="text-center mb-5">
+        <div class="display-1">🏆</div>
+        <h1 class="fw-bold">Результаты: {{ game.title }}</h1>
+        <p class="text-muted">Кто первый дошёл — тот и чемпион!</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        {% for r in ranked %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 h-100 {% if r.place == 1 %}border-warning border-3{% endif %}">
+                    <div class="card-body p-4 text-center">
+
+                        <div class="mb-2">
+                            {% include 'includes/avatar.html' with user=r.student size=72 %}
+                        </div>
+
+                        {% if r.place == 1 %}
+                            <div class="display-4">🥇</div>
+                        {% elif r.place == 2 %}
+                            <div class="display-4">🥈</div>
+                        {% elif r.place == 3 %}
+                            <div class="display-4">🥉</div>
+                        {% else %}
+                            <div class="display-4">🎮</div>
+                        {% endif %}
+
+                        <h4 class="fw-bold mb-1 mt-2">
+                            {{ r.student.get_full_name|default:r.student.username }}
+                        </h4>
+
+                        {% if r.is_finished %}
+                            <p class="text-success small mb-3">
+                                <i class="bi bi-check-circle-fill"></i> Финишировал
+                            </p>
+                        {% else %}
+                            <p class="text-muted small mb-3">Не дошёл до финиша</p>
+                        {% endif %}
+
+                        <div class="row text-center g-2">
+                            <div class="col-6">
+                                <div class="bg-light rounded-3 p-2">
+                                    <div class="fw-bold text-primary">{{ r.quiz_score }}</div>
+                                    <div class="small text-muted">заработал</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-light rounded-3 p-2">
+                                    <div class="fw-bold text-warning">{{ r.spent }}</div>
+                                    <div class="small text-muted">потратил</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if r.finished_at %}
+                            <p class="small text-muted mt-3 mb-0">
+                                Финиш: {{ r.finished_at|date:"H:i:s" }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <p class="text-muted text-center">Пока никто не играл</p>
+        {% endfor %}
+    </div>
+
+    {% if user.is_teacher %}
+        <div class="text-center mt-5">
+            <a href="{% url 'games:manage' game.id %}" class="btn btn-outline-primary rounded-pill px-4">
+                ← Вернуться к управлению
+            </a>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,14 +1,237 @@
 {% extends "base.html" %}
-{% block title %}EasyLearnSite — главная{% endblock %}
+{% load static %}
+
+{% block title %}EasyLearnSite — учись играя!{% endblock %}
 
 {% block content %}
-<h1>Добро пожаловать в EasyLearnSite! 🎓</h1>
-<p>Игровая платформа для школьников 1-4 классов.</p>
 
-{% if not user.is_authenticated %}
-    <div style="margin-top: 20px;">
-        <a href="{% url 'accounts:signup' %}?role=teacher" class="btn">Я учитель</a>
-        <a href="{% url 'accounts:signup' %}?role=student" class="btn btn-secondary">Я ученик</a>
+<!-- ==================== HERO ==================== -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center g-5">
+
+            <div class="col-lg-6 reveal reveal-left">
+                <span class="badge-soft mb-3">
+                    <i class="bi bi-stars"></i> Платформа для 1-4 классов
+                </span>
+                <h1 class="hero-title">
+                    Учись играя!<br>
+                    <span class="text-gradient">Получай баллы</span><br>
+                    Становись лидером
+                </h1>
+                <p class="hero-lead">
+                    EasyLearnSite превращает обычный урок в захватывающую игру.
+                    Отвечай на вопросы, соревнуйся с одноклассниками и зарабатывай награды!
+                </p>
+
+                {% if not user.is_authenticated %}
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a href="{% url 'accounts:signup' %}?role=student"
+                           class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-play-circle-fill me-2"></i> Я ученик
+                        </a>
+                        <a href="{% url 'accounts:signup' %}?role=teacher"
+                           class="btn btn-outline-primary btn-lg rounded-pill px-4 fw-bold">
+                            <i class="bi bi-person-workspace me-2"></i> Я учитель
+                        </a>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 mt-4 text-muted small flex-wrap">
+                        <span><i class="bi bi-check-circle-fill text-success"></i> Бесплатно</span>
+                        <span><i class="bi bi-check-circle-fill text-success"></i> Без рекламы</span>
+                        <span><i class="bi bi-check-circle-fill text-success"></i> С телефона</span>
+                    </div>
+                {% else %}
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a href="{% url 'games:list' %}"
+                           class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-play-fill me-2"></i> К играм
+                        </a>
+                        <a href="{% url 'scores:leaderboard' %}"
+                           class="btn btn-warning btn-lg rounded-pill px-4 fw-bold shadow-sm btn-leaders">
+                            <i class="bi bi-trophy-fill me-2"></i> Смотреть лидеров
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="col-lg-6 reveal reveal-right">
+                <div class="hero-visual">
+                    <div class="hero-blob"></div>
+                    <div class="stat-card stat-card-1 shadow-lg">
+                        <div class="stat-emoji">🏆</div>
+                        <div class="stat-text">
+                            <div class="stat-value">+50</div>
+                            <div class="stat-label">баллов</div>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-card-2 shadow-lg">
+                        <div class="stat-emoji">⭐</div>
+                        <div class="stat-text">
+                            <div class="stat-value">1 место</div>
+                            <div class="stat-label">в классе</div>
+                        </div>
+                    </div>
+                    <div class="hero-center">
+                        <div class="hero-center-emoji">🎓</div>
+                        <div class="hero-center-glow"></div>
+                    </div>
+                    <div class="float-icon float-icon-1">📚</div>
+                    <div class="float-icon float-icon-2">🎯</div>
+                    <div class="float-icon float-icon-3">✏️</div>
+                    <div class="float-icon float-icon-4">🎉</div>
+                </div>
+            </div>
+
+        </div>
     </div>
+</section>
+
+
+<!-- ==================== КАК ЭТО РАБОТАЕТ ==================== -->
+<section class="py-5 py-lg-6">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="badge-soft mb-3"><i class="bi bi-lightbulb"></i> Просто и понятно</span>
+            <h2 class="section-title">Как это работает?</h2>
+            <p class="section-subtitle">Три шага до первого балла</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4 reveal delay-1">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon-wrap bg-primary-soft">
+                        <i class="bi bi-person-plus-fill text-primary"></i>
+                    </div>
+                    <h4>Регистрируйся</h4>
+                    <p>Выбери роль — ученик или учитель. Всё быстро и без сложностей.</p>
+                </div>
+            </div>
+            <div class="col-md-4 reveal delay-2">
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon-wrap bg-warning-soft">
+                        <i class="bi bi-controller text-warning"></i>
+                    </div>
+                    <h4>Играй на уроке</h4>
+                    <p>Учитель запускает игру, ты отвечаешь и получаешь баллы за каждый ответ.</p>
+                </div>
+            </div>
+            <div class="col-md-4 reveal delay-3">
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon-wrap bg-success-soft">
+                        <i class="bi bi-trophy-fill text-success"></i>
+                    </div>
+                    <h4>Становись лидером</h4>
+                    <p>Следи за рейтингом класса и получай награды от учителя!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ==================== ПРЕИМУЩЕСТВА ==================== -->
+<section class="py-5 py-lg-6 bg-light-section">
+    <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="badge-soft mb-3"><i class="bi bi-heart"></i> Почему нам доверяют</span>
+            <h2 class="section-title">Почему EasyLearnSite?</h2>
+            <p class="section-subtitle">Всё, что нужно для мотивации школьника</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3 reveal delay-1">
+                <div class="feature-card">
+                    <div class="feature-icon bg-primary-soft">
+                        <i class="bi bi-joystick text-primary"></i>
+                    </div>
+                    <h5>Игровой формат</h5>
+                    <p>Уроки превращаются в квизы, где каждый ответ — шаг к победе.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 reveal delay-2">
+                <div class="feature-card">
+                    <div class="feature-icon bg-warning-soft">
+                        <i class="bi bi-lightning-charge-fill text-warning"></i>
+                    </div>
+                    <h5>Мгновенный результат</h5>
+                    <p>Баллы начисляются сразу. Ребёнок видит прогресс в реальном времени.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 reveal delay-3">
+                <div class="feature-card">
+                    <div class="feature-icon bg-success-soft">
+                        <i class="bi bi-trophy-fill text-success"></i>
+                    </div>
+                    <h5>Соревнование</h5>
+                    <p>Лидерборд мотивирует. Учитель сам решает, за что давать баллы.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 reveal delay-4">
+                <div class="feature-card">
+                    <div class="feature-icon bg-info-soft">
+                        <i class="bi bi-phone-fill text-info"></i>
+                    </div>
+                    <h5>Удобно с телефона</h5>
+                    <p>Работает на планшетах и смартфонах — играй прямо из класса.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ==================== СТАТИСТИКА ==================== -->
+<section class="py-5 py-lg-6">
+    <div class="container">
+        <div class="row g-4 text-center">
+            <div class="col-6 col-md-3 reveal delay-1">
+                <div class="stat-big">
+                    <div class="stat-big-value text-primary">1-4</div>
+                    <div class="stat-big-label">классы</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 reveal delay-2">
+                <div class="stat-big">
+                    <div class="stat-big-value text-warning">⚡</div>
+                    <div class="stat-big-label">мгновенно</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 reveal delay-3">
+                <div class="stat-big">
+                    <div class="stat-big-value text-success">100%</div>
+                    <div class="stat-big-label">бесплатно</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 reveal delay-4">
+                <div class="stat-big">
+                    <div class="stat-big-value text-info">∞</div>
+                    <div class="stat-big-label">игр и наград</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ==================== CTA ==================== -->
+{% if not user.is_authenticated %}
+<section class="py-5">
+    <div class="container">
+        <div class="cta-box text-center text-white reveal reveal-zoom">
+            <h2 class="display-5 fw-bold mb-3">Готов начать? 🚀</h2>
+            <p class="lead mb-4 opacity-90">
+                Присоединяйся к EasyLearnSite бесплатно и преврати учёбу в игру!
+            </p>
+            <a href="{% url 'accounts:signup' %}"
+               class="btn btn-light btn-lg rounded-pill px-5 fw-bold text-primary shadow">
+                <i class="bi bi-rocket-takeoff-fill me-2"></i> Зарегистрироваться
+            </a>
+        </div>
+    </div>
+</section>
 {% endif %}
+
 {% endblock %}

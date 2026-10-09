@@ -18,6 +18,13 @@ class User(AbstractUser):
         verbose_name='Школьный класс'
     )
 
+    avatar_emoji = models.CharField(
+        'Эмодзи-аватар', max_length=10, blank=True, default='🧑'
+    )
+    avatar = models.ImageField(
+        'Своя аватарка', upload_to='avatars/', null=True, blank=True
+    )
+
     def is_teacher(self):
         return self.role == 'teacher'
 
@@ -33,7 +40,6 @@ class User(AbstractUser):
 
 
 class SchoolClass(models.Model):
-    """Школьный класс, привязанный к учителю."""
     name = models.CharField('Название', max_length=50)
     grade = models.PositiveSmallIntegerField('Параллель (1-4)')
     teacher = models.ForeignKey(

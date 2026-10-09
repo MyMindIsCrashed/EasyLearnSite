@@ -1,14 +1,47 @@
 {% extends "base.html" %}
+{% block title %}Новая игра{% endblock %}
+
 {% block content %}
-<h1>Новая игра</h1>
-<form method="post">
-    {% csrf_token %}
-    <p><label>Название: <input type="text" name="title" required></label></p>
-    <p><label>Класс:
-        <select name="school_class" required>
-            {% for c in classes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
-        </select>
-    </label></p>
-    <button class="btn" type="submit">Создать</button>
-</form>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-5">
+                    <h1 class="h3 fw-bold mb-2">🎮 Новая игра</h1>
+                    <p class="text-muted mb-4">После создания ты получишь PIN-код для учеников</p>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Название игры</label>
+                            <input type="text" name="title" required
+                                   class="form-control form-control-lg"
+                                   placeholder="Например: Таблица умножения">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Класс</label>
+                            <select name="school_class" required class="form-select form-select-lg">
+                                {% for c in classes %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                {% empty %}
+                                    <option disabled>У тебя нет классов — создай в админке</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill w-100">
+                            <i class="bi bi-plus-circle me-2"></i> Создать игру
+                        </button>
+                    </form>
+
+                    <p class="text-center text-muted small mt-3 mb-0">
+                        После создания добавишь вопросы через админку
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% block title %}Монополия{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h1 class="h4 fw-bold mb-0">🎲 Монополия</h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                Ход #<span id="turn-number">{{ monopoly.turn_number }}</span>
+            </span>
+            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2">
+                Бонус: <strong id="my-bonus">{{ player.bonus_points }}</strong>
+            </span>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+        <div class="monopoly-map" id="track"></div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3 text-center">
+        <div id="turn-status" class="mb-3">
+            <div class="fs-5 fw-bold text-muted">Загрузка…</div>
+        </div>
+
+        <button id="roll-btn" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm d-none">
+            🎲 Бросить кубик
+        </button>
+
+        <div id="dice-result" class="mt-3 d-none">
+            <div class="dice-big" id="dice-value">?</div>
+            <div id="dice-event" class="mt-2 fw-bold"></div>
+        </div>
+
+        <div id="message" class="alert mt-3 mb-0 d-none"></div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h5 class="fw-bold mb-3">👥 Игроки</h5>
+        <div class="row g-2" id="players-list">
+            {% for p in players %}
+                <div class="col-6 col-md-4" data-player-id="{{ p.id }}">
+                    <div class="player-mini {% if p.id == player.id %}me{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            {% include 'includes/avatar.html' with user=p.student size=32 %}
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="small fw-bold text-truncate">
+                                    {% if p.id == player.id %}Ты{% else %}{{ p.student.get_full_name|default:p.student.username }}{% endif %}
+                                </div>
+                                <div class="small text-muted">
+                                    Поз: <span class="pos-value">{{ p.position }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<style>
+.monopoly-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+}
+.track-cell {
+    min-height: 90px;
+    border-radius: 12px;
+    background: #f8f9ff;
+    border: 2px solid #e5e7f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4b5563;
+    position: relative;
+    transition: all 0.35s;
+    text-align: center;
+    padding: 6px;
+}
+.track-cell-icon { font-size: 22px; margin-bottom: 2px; }
+.track-cell-num {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 700;
+}
+.track-cell-player {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border: 2px solid #6366f1;
+    overflow: hidden;
+    z-index: 2;
+}
+.track-cell-player img { width: 100%; height: 100%; object-fit: cover; }
+
+.track-cell.me-here {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.35);
+    transform: scale(1.08);
+    background: #eef2ff;
+}
+
+.track-cell.trail {
+    background: linear-gradient(135deg, #c7d2fe, #ddd6fe);
+    border-color: #a5b4fc;
+}
+
+.track-cell.stepping {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 4px rgba(245,158,11,0.5);
+    transform: scale(1.12);
+    background: #fef3c7;
+    z-index: 5;
+}
+
+.track-cell.arrived {
+    border-color: #10b981;
+    box-shadow: 0 0 0 4px rgba(16,185,129,0.4);
+    background: #d1fae5;
+}
+
+.track-start    { background: linear-gradient(135deg, #bbf7d0, #86efac); }
+.track-finish   { background: linear-gradient(135deg, #fde68a, #fbbf24); }
+.track-question { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+.track-boost    { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+.track-trap     { background: linear-gradient(135deg, #fecaca, #fca5a5); }
+.track-bonus    { background: linear-gradient(135deg, #e9d5ff, #d8b4fe); }
+.track-swap     { background: linear-gradient(135deg, #cffafe, #a5f3fc); }
+
+.dice-big {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    color: #6366f1;
+    animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pop {
+    0%   { transform: scale(0.3); opacity: 0; }
+    60%  { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
+.player-mini {
+    background: #f8f9ff;
+    border-radius: 12px;
+    padding: 8px 10px;
+    border: 2px solid transparent;
+}
+.player-mini.me {
+    background: #eef2ff;
+    border-color: #6366f1;
+}
+.player-mini.current {
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251,191,36,0.25);
+}
+</style>
+
+<script>
+const MONOPOLY_ID = {{ monopoly.id }};
+const MY_ID = {{ player.id }};
+const MAP = {{ map|safe }};
+const MAP_LENGTH = {{ max_position }};
+
+const trackEl = document.getElementById('track');
+const statusEl = document.getElementById('turn-status');
+const btn = document.getElementById('roll-btn');
+
+let lastPositions = {};
+let passedCells = [];
+let animating = false;
+
+function renderMap(players) {
+    trackEl.innerHTML = '';
+    const me = players.find(p => p.id === MY_ID);
+
+    for (let i = 0; i <= MAP_LENGTH; i++) {
+        const cell = MAP[i];
+        const cellEl = document.createElement('div');
+        cellEl.className = `track-cell track-${cell.type}`;
+        cellEl.dataset.index = i;
+
+        if (passedCells.includes(i)) cellEl.classList.add('trail');
+        if (me && me.position === i) cellEl.classList.add('me-here');
+
+        const num = document.createElement('div');
+        num.className = 'track-cell-num';
+        num.textContent = i;
+        cellEl.appendChild(num);
+
+        const icon = document.createElement('div');
+        icon.className = 'track-cell-icon';
+        icon.textContent = cell.icon;
+        cellEl.appendChild(icon);
+
+        const label = document.createElement('div');
+        label.textContent = cell.label;
+        cellEl.appendChild(label);
+
+        // фишки
+        players.filter(p => p.position === i).forEach(p => {
+            const badge = document.createElement('div');
+            badge.className = 'track-cell-player';
+            badge.dataset.playerId = p.id;
+            badge.title = p.name;
+            if (p.avatar) badge.innerHTML = `<img src="${p.avatar}" alt="">`;
+            else badge.textContent = p.emoji || '🧑';
+            cellEl.appendChild(badge);
+        });
+
+        trackEl.appendChild(cellEl);
+    }
+}
+
+async function animateMovement(from, to) {
+    animating = true;
+    passedCells = [];
+
+    // идём от from+1 до to
+    for (let step = from + 1; step <= to; step++) {
+        const cellEl = document.querySelector(`.track-cell[data-index="${step}"]`);
+        if (!cellEl) continue;
+
+        cellEl.classList.add('stepping');
+        await sleep(400);
+        cellEl.classList.remove('stepping');
+
+        if (step < to) {
+            cellEl.classList.add('trail');
+            passedCells.push(step);
+        }
+    }
+
+    // финальная клетка — "arrived"
+    const finalCell = document.querySelector(`.track-cell[data-index="${to}"]`);
+    if (finalCell) {
+        finalCell.classList.add('arrived');
+        setTimeout(() => finalCell.classList.remove('arrived'), 1200);
+    }
+
+    await sleep(300);
+    animating = false;
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+async function refreshState() {
+    try {
+        const r = await fetch("{% url 'games:monopoly_state' monopoly.id %}");
+        const data = await r.json();
+
+        document.getElementById('turn-number').textContent = data.turn_number;
+
+        const me = data.players.find(p => p.id === MY_ID);
+        if (me) {
+            document.getElementById('my-bonus').textContent = me.bonus_points;
+        }
+
+        // если я двигался — анимируем
+        if (me && lastPositions[MY_ID] !== undefined && lastPositions[MY_ID] !== me.position) {
+            const from = lastPositions[MY_ID];
+            const to = me.position;
+            await animateMovement(from, to);
+        }
+
+        renderMap(data.players);
+
+        data.players.forEach(p => {
+            lastPositions[p.id] = p.position;
+        });
+
+        data.players.forEach(p => {
+            const card = document.querySelector(`[data-player-id="${p.id}"]`);
+            if (card) {
+                const posEl = card.querySelector('.pos-value');
+                if (posEl) posEl.textContent = p.position;
+                const mini = card.querySelector('.player-mini');
+                if (mini) mini.classList.toggle('current', p.id === data.current_player_id);
+            }
+        });
+
+        if (data.status === 'finished') {
+            statusEl.innerHTML = '<div class="fs-4 fw-bold text-success">🏆 Игра завершена!</div>';
+            btn.classList.add('d-none');
+            setTimeout(() => {
+                window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
+            }, 1500);
+            return;
+        }
+
+        if (data.status === 'waiting') {
+            statusEl.innerHTML = '<div class="fs-5 fw-bold text-muted">⏳ Ждём учителя…</div>';
+            btn.classList.add('d-none');
+            return;
+        }
+
+        if (me && me.is_finished) {
+            statusEl.innerHTML = '<div class="fs-5 fw-bold text-success">🎉 Ты на финише!</div>';
+            btn.classList.add('d-none');
+            return;
+        }
+
+        if (data.current_player_id === MY_ID) {
+            statusEl.innerHTML = '<div class="fs-5 fw-bold text-primary">🎲 Твой ход!</div>';
+            btn.classList.remove('d-none');
+        } else {
+            statusEl.innerHTML = `<div class="fs-5 fw-bold text-muted">Ждём: ${data.current_player_name || '…'}</div>`;
+            btn.classList.add('d-none');
+        }
+    } catch (e) {
+        console.error('state error', e);
+    }
+}
+
+btn.addEventListener('click', async function () {
+    if (animating) return;
+    this.disabled = true;
+
+    try {
+        const fd = new FormData();
+        const r = await fetch("{% url 'games:monopoly_roll' monopoly.id %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: fd,
+        });
+        const data = await r.json();
+
+        if (data.error) {
+            const msgs = {
+                'not_your_turn': 'Сейчас не твой ход',
+                'already_finished': 'Ты уже на финише',
+            };
+            showMessage(msgs[data.error] || data.error);
+            this.disabled = false;
+            return;
+        }
+
+        // показываем кубик
+        const diceBox = document.getElementById('dice-result');
+        const diceVal = document.getElementById('dice-value');
+        const diceEv = document.getElementById('dice-event');
+
+        diceBox.classList.remove('d-none');
+        diceVal.textContent = data.dice;
+        diceVal.style.animation = 'none';
+        void diceVal.offsetWidth;
+        diceVal.style.animation = 'pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+        diceEv.textContent = data.cell_label;
+        if (data.cell_type === 'boost' || data.cell_type === 'bonus') {
+            diceEv.className = 'mt-2 fw-bold text-success';
+        } else if (data.cell_type === 'trap') {
+            diceEv.className = 'mt-2 fw-bold text-danger';
+        } else {
+            diceEv.className = 'mt-2 fw-bold text-primary';
+        }
+
+        // анимация
+        await animateMovement(data.from, data.to);
+
+        lastPositions[MY_ID] = data.to;
+        await refreshState();
+
+        setTimeout(() => { this.disabled = false; }, 300);
+    } catch (e) {
+        console.error(e);
+        showMessage('Ошибка сети');
+        this.disabled = false;
+    }
+});
+
+function showMessage(text, type = 'danger') {
+    const el = document.getElementById('message');
+    el.className = `alert alert-${type} mt-3 mb-0`;
+    el.textContent = text;
+    setTimeout(() => { el.className = 'alert mt-3 mb-0 d-none'; }, 2500);
+}
+
+refreshState();
+setInterval(() => { if (!animating) refreshState(); }, 2000);
+</script>
+{% endblock %}

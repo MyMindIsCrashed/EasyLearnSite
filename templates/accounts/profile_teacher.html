@@ -1,12 +1,284 @@
 {% extends "base.html" %}
+{% block title %}Кабинет учителя{% endblock %}
+
 {% block content %}
-<h1>Кабинет учителя</h1>
-<h2>Мои классы</h2>
-<ul>
-{% for c in classes %}
-    <li>{{ c.name }} — {{ c.students.count }} учеников</li>
-{% empty %}
-    <li>Классов пока нет. Создай их в админке.</li>
-{% endfor %}
-</ul>
+<div class="container py-5">
+
+    <div class="profile-header mb-4">
+        <div class="profile-avatar-wrap">
+            {% if user.avatar %}
+                <img src="{{ user.avatar.url }}" alt="avatar" class="profile-avatar-img">
+            {% else %}
+                <div class="profile-avatar-emoji">{{ user.avatar_emoji }}</div>
+            {% endif %}
+        </div>
+        <div class="profile-info">
+            <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
+            <div class="profile-tags">
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                    <i class="bi bi-person-workspace"></i> Учитель
+                </span>
+                <span class="badge bg-info-subtle text-info rounded-pill px-3 py-2">
+                    <i class="bi bi-people-fill"></i> {{ total_students }} учеников
+                </span>
+                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2">
+                    <i class="bi bi-controller"></i> {{ total_games }} игр
+                </span>
+            </div>
+            <a href="{% url 'accounts:profile_edit' %}" class="btn btn-outline-primary rounded-pill mt-3">
+                <i class="bi bi-pencil"></i> Редактировать профиль
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-primary-soft">
+                    <i class="bi bi-people-fill text-primary"></i>
+                </div>
+                <div class="stat-value">{{ classes|length }}</div>
+                <div class="stat-label">классов</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-warning-soft">
+                    <i class="bi bi-controller text-warning"></i>
+                </div>
+                <div class="stat-value">{{ total_games }}</div>
+                <div class="stat-label">игр создано</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-success-soft">
+                    <i class="bi bi-check-circle text-success"></i>
+                </div>
+                <div class="stat-value">{{ games_finished }}</div>
+                <div class="stat-label">завершено</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-info-soft">
+                    <i class="bi bi-mortarboard-fill text-info"></i>
+                </div>
+                <div class="stat-value">{{ total_students }}</div>
+                <div class="stat-label">учеников</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-people-fill text-primary"></i> Мои классы
+                    </h5>
+
+                    {% if classes %}
+                        {% for c in classes %}
+                            <div class="class-card mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="class-name">{{ c.name }}</div>
+                                        <div class="class-meta">
+                                            {{ c.student_count }} учеников · {{ c.grade }} класс
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-muted"></i>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">
+                            Классов пока нет. Создай их в <a href="/admin/">админке</a>.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-trophy-fill text-warning"></i> Топ учеников
+                    </h5>
+
+                    {% if top_students %}
+                        {% for s in top_students %}
+                            <div class="top-student-item">
+                                <div class="top-student-rank">
+                                    {% if forloop.counter == 1 %}🥇
+                                    {% elif forloop.counter == 2 %}🥈
+                                    {% elif forloop.counter == 3 %}🥉
+                                    {% else %}{{ forloop.counter }}{% endif %}
+                                </div>
+                                {% include 'includes/avatar.html' with user=s size=40 link=True %}
+                                <div class="top-student-info">
+                                    <a href="{% url 'accounts:user_profile' s.id %}"
+                                       class="text-decoration-none fw-bold text-dark">
+                                        {{ s.get_full_name|default:s.username }}
+                                    </a>
+                                    <div class="small text-muted">
+                                        {{ s.school_class.name|default:"—" }}
+                                    </div>
+                                </div>
+                                <div class="top-student-score">
+                                    {{ s.total|default:0 }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">Пока нет учеников</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-clock-history text-primary"></i> Последние игры
+            </h5>
+
+            {% if recent_games %}
+                <div class="row g-3">
+                    {% for g in recent_games %}
+                        <div class="col-md-6 col-lg-4">
+                            <a href="{% url 'games:detail' g.id %}" class="text-decoration-none">
+                                <div class="recent-game-card">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="fw-bold text-dark">{{ g.title }}</div>
+                                        {% if g.status == 'waiting' %}
+                                            <span class="badge bg-secondary-subtle text-secondary rounded-pill">Ожидание</span>
+                                        {% elif g.status == 'quiz' %}
+                                            <span class="badge bg-info-subtle text-info rounded-pill">Квиз</span>
+                                        {% elif g.status == 'maze' %}
+                                            <span class="badge bg-warning-subtle text-warning rounded-pill">Лабиринт</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success rounded-pill">Завершена</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="small text-muted">
+                                        {{ g.school_class.name }} · PIN: {{ g.pin_code }}
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">Пока нет игр</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<style>
+.profile-header {
+    background: linear-gradient(135deg, #eef2ff 0%, #fce7f3 100%);
+    border-radius: 24px;
+    padding: 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+.profile-avatar-wrap {
+    flex-shrink: 0;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 32px -8px rgba(99,102,241,0.4);
+    border: 4px solid white;
+}
+.profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar-emoji { font-size: 72px; line-height: 1; }
+.profile-name { font-size: 32px; font-weight: 900; margin-bottom: 12px; letter-spacing: -0.02em; }
+.profile-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.stat-card-mini {
+    background: white;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 4px 16px -4px rgba(99,102,241,0.12);
+    text-align: center;
+    height: 100%;
+    transition: transform 0.2s;
+}
+.stat-card-mini:hover { transform: translateY(-3px); }
+.stat-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 10px;
+}
+.stat-value { font-size: 28px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.stat-label { font-size: 13px; color: #6b7280; font-weight: 600; }
+
+.class-card {
+    background: #f8f9ff;
+    border-radius: 16px;
+    padding: 16px 20px;
+    transition: all 0.2s;
+}
+.class-card:hover { background: #eef2ff; transform: translateX(4px); }
+.class-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.class-meta { font-size: 13px; color: #6b7280; }
+
+.top-student-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f5;
+}
+.top-student-item:last-child { border-bottom: none; }
+.top-student-rank {
+    width: 32px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.top-student-info { flex-grow: 1; min-width: 0; }
+.top-student-score {
+    font-weight: 900;
+    font-size: 18px;
+    color: #6366f1;
+}
+
+.recent-game-card {
+    background: #f8f9ff;
+    border-radius: 14px;
+    padding: 16px;
+    transition: all 0.2s;
+}
+.recent-game-card:hover { background: #eef2ff; transform: translateY(-3px); }
+
+.bg-primary-soft { background: rgba(99,102,241,0.12); }
+.bg-warning-soft { background: rgba(245,158,11,0.14); }
+.bg-success-soft { background: rgba(34,197,94,0.14); }
+.bg-info-soft    { background: rgba(14,165,233,0.14); }
+
+@media (max-width: 576px) {
+    .profile-header { padding: 24px; text-align: center; justify-content: center; }
+    .profile-avatar-wrap { width: 100px; height: 100px; }
+    .profile-avatar-emoji { font-size: 60px; }
+    .profile-name { font-size: 24px; }
+    .profile-tags { justify-content: center; }
+}
+</style>
 {% endblock %}

@@ -1,0 +1,636 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Лабиринт — {{ game.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h1 class="h4 fw-bold mb-0">🌀 Лабиринт</h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2">
+                Осталось: <strong id="remaining">{{ session.remaining_points }}</strong>
+            </span>
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">
+                Потрачено: <span id="spent">{{ session.spent_points }}</span>
+            </span>
+        </div>
+    </div>
+
+    <div class="alert alert-primary border-0 rounded-4 py-2 mb-3 d-flex align-items-center gap-2">
+        <span style="font-size: 20px;">🎲</span>
+        <small class="mb-0">
+            Твой лабиринт: <strong>{{ maze_json|length }}×{{ maze_json|length }}</strong>.
+            Чем больше баллов — тем больше лабиринт!
+        </small>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-2 p-md-3 mb-3">
+        <div id="maze" class="maze-grid"></div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+        <h5 class="fw-bold mb-3 text-center">
+            <i class="bi bi-joystick text-primary"></i> Управление
+        </h5>
+
+        <p class="text-muted small mb-2 text-center">1. Выбери действие:</p>
+        <div class="action-row">
+            <button class="action-btn active" data-action="step" data-cost="1">
+                <span class="action-emoji">👣</span>
+                <span class="action-label">Шаг</span>
+                <span class="action-cost">1 балл</span>
+            </button>
+            <button class="action-btn" data-action="long" data-cost="3">
+                <span class="action-emoji">🏃</span>
+                <span class="action-label">Длинный</span>
+                <span class="action-cost">3 балла</span>
+            </button>
+            <button class="action-btn" data-action="super" data-cost="5">
+                <span class="action-emoji">🚀</span>
+                <span class="action-label">Супер</span>
+                <span class="action-cost">5 баллов</span>
+            </button>
+            <button class="action-btn action-btn-warning" data-action="teleport" data-cost="35">
+                <span class="action-emoji">✨</span>
+                <span class="action-label">Телепорт</span>
+                <span class="action-cost">35 баллов</span>
+            </button>
+        </div>
+
+        <div class="alert alert-warning small py-2 mt-2 mb-0">
+            <i class="bi bi-shuffle"></i>
+            <strong>Телепорт</strong> — переносит в случайное место на карте.
+            Может помочь, а может откинуть назад!
+        </div>
+
+        <p class="text-muted small mb-2 text-center mt-3">2. Куда идти:</p>
+        <div class="d-pad" id="dpad">
+            <button class="d-pad-btn d-pad-up"    data-dir="up">↑</button>
+            <button class="d-pad-btn d-pad-left"  data-dir="left">←</button>
+            <div class="d-pad-center">🧭</div>
+            <button class="d-pad-btn d-pad-right" data-dir="right">→</button>
+            <button class="d-pad-btn d-pad-down"  data-dir="down">↓</button>
+        </div>
+
+        <div id="cooldown" class="cooldown-hidden mt-3">
+            <div class="cooldown-bar-wrap">
+                <div class="cooldown-bar" id="cooldown-bar"></div>
+            </div>
+            <p class="text-center small text-muted mb-0 mt-2">
+                Подожди <strong id="cooldown-num">3</strong> сек…
+                <br>
+                <span class="text-primary fw-bold">
+                    <i class="bi bi-lightbulb"></i>
+                    Можешь выбрать следующее действие заранее!
+                </span>
+            </p>
+        </div>
+
+        <div id="message" class="alert mt-3 mb-0 d-none"></div>
+    </div>
+
+    <div class="text-center text-muted small mb-4">
+        🧑 — ты · 🏁 — выход · тёмные клетки — стены
+    </div>
+
+</div>
+
+<style>
+.maze-grid {
+    display: grid;
+    grid-template-columns: repeat({{ maze_json.0|length }}, 1fr);
+    gap: 3px;
+    aspect-ratio: 1;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    position: relative;
+}
+.maze-cell {
+    background: #e5e9f2;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(10px, 2.5vw, 20px);
+    aspect-ratio: 1;
+    transition: background 0.2s;
+    position: relative;
+}
+.maze-cell.wall   { background: #1e1b4b; }
+.maze-cell.path   { background: #f0f4ff; }
+.maze-cell.start  { background: #bbf7d0; }
+.maze-cell.goal   { background: #fde68a; }
+.maze-cell.player {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    transform: scale(1.15);
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
+    z-index: 2;
+}
+
+/* ============================================================
+   АНИМАЦИЯ ПЕРЕМЕЩЕНИЯ ИГРОКА
+   ============================================================ */
+/* сам игрок — плавно выезжает из предыдущей клетки */
+.maze-cell.player {
+    animation: playerAppear 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes playerAppear {
+    0% {
+        transform: scale(0.4) rotate(-15deg);
+        filter: brightness(1.5);
+        box-shadow: 0 0 0 8px rgba(99,102,241,0.6);
+    }
+    60% {
+        transform: scale(1.25) rotate(5deg);
+        box-shadow: 0 0 0 4px rgba(99,102,241,0.4);
+    }
+    100% {
+        transform: scale(1.15) rotate(0);
+        box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
+    }
+}
+
+/* след, который остаётся за игроком */
+.maze-cell.trail {
+    background: linear-gradient(135deg, #c7d2fe, #ddd6fe);
+    animation: trailFade 1.2s ease-out;
+}
+@keyframes trailFade {
+    0%   { background: #a5b4fc; }
+    100% { background: #f0f4ff; }
+}
+
+/* пульсация старой клетки — «я тут был» */
+.maze-cell.left {
+    animation: cellLeave 0.4s ease-out;
+}
+@keyframes cellLeave {
+    0%   { background: #a5b4fc; }
+    100% { background: #f0f4ff; }
+}
+
+/* телепорт — вспышка на старой и новой клетке */
+.maze-cell.teleport-out {
+    animation: teleportOut 0.5s ease-out;
+}
+@keyframes teleportOut {
+    0%   { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
+    50%  { background: #fbbf24; box-shadow: 0 0 0 20px rgba(245,158,11,0); }
+    100% { background: #f0f4ff; }
+}
+.maze-cell.teleport-in {
+    animation: teleportIn 0.6s ease-out;
+}
+@keyframes teleportIn {
+    0% {
+        background: #fbbf24;
+        box-shadow: 0 0 0 20px rgba(245,158,11,0.6);
+        transform: scale(0.5);
+    }
+    100% {
+        background: transparent;
+        box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
+        transform: scale(1.15);
+    }
+}
+
+/* шаги «тук-тук» для длинного шага */
+.maze-cell.footstep {
+    animation: footstep 0.25s ease-out;
+}
+@keyframes footstep {
+    0%   { background: #c7d2fe; transform: scale(0.95); }
+    100% { background: #f0f4ff; transform: scale(1); }
+}
+
+.action-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+.action-btn {
+    background: white;
+    border: 2px solid #e5e7f5;
+    border-radius: 14px;
+    padding: 10px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    font-weight: 600;
+    color: #4b5563;
+}
+.action-btn:hover { border-color: #6366f1; color: #6366f1; }
+.action-btn.active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-color: #6366f1;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -4px rgba(99,102,241,0.5);
+}
+.action-btn-warning.active {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    border-color: #f59e0b;
+    box-shadow: 0 6px 16px -4px rgba(245,158,11,0.5);
+}
+.action-btn.queued {
+    outline: 3px dashed #6366f1;
+    outline-offset: 2px;
+    animation: queueGlow 1s ease-in-out infinite;
+}
+@keyframes queueGlow {
+    0%, 100% { outline-color: #6366f1; }
+    50%      { outline-color: #a78bfa; }
+}
+.action-emoji { font-size: 24px; line-height: 1; }
+.action-label { font-size: 12px; font-weight: 700; }
+.action-cost  { font-size: 10px; opacity: 0.7; }
+
+.d-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 68px);
+    grid-template-rows: repeat(3, 68px);
+    gap: 8px;
+    justify-content: center;
+    margin: 0 auto;
+    transition: opacity 0.2s;
+}
+.d-pad.disabled { opacity: 0.35; pointer-events: none; }
+.d-pad-btn {
+    background: white;
+    border: 2px solid #e5e7f5;
+    border-radius: 16px;
+    font-size: 26px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.d-pad-btn:hover { background: #6366f1; color: white; border-color: #6366f1; }
+.d-pad-btn:active { transform: scale(0.92); }
+.d-pad-up    { grid-area: 1 / 2; }
+.d-pad-left  { grid-area: 2 / 1; }
+.d-pad-center{ grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.d-pad-right { grid-area: 2 / 3; }
+.d-pad-down  { grid-area: 3 / 2; }
+
+.cooldown-hidden { display: none; }
+.cooldown-bar-wrap {
+    height: 8px;
+    background: #e5e7f5;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.cooldown-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    border-radius: 999px;
+    transition: width 0.1s linear;
+}
+
+@media (max-width: 480px) {
+    .action-label { font-size: 11px; }
+    .action-cost  { font-size: 9px; }
+    .action-emoji { font-size: 20px; }
+    .d-pad {
+        grid-template-columns: repeat(3, 60px);
+        grid-template-rows: repeat(3, 60px);
+    }
+    .d-pad-btn { font-size: 22px; }
+}
+</style>
+
+<script>
+const MAZE = {{ maze_json|safe }};
+let playerPos = {
+    row: {{ session.position.row|default:1 }},
+    col: {{ session.position.col|default:1 }}
+};
+let selectedAction = 'step';
+let cooldownActive = false;
+let cooldownInterval = null;
+let queuedAction = null;
+let animating = false;   // блокировка, пока идёт анимация
+
+const COOLDOWN_SECONDS = 3;
+const STEP_MS = 140;      // сколько миллисекунд длится один блок
+const TELEPORT_MS = 600;  // сколько длится телепорт
+
+const mazeEl = document.getElementById('maze');
+const msgEl = document.getElementById('message');
+const dpad = document.getElementById('dpad');
+const cooldownBox = document.getElementById('cooldown');
+const cooldownBar = document.getElementById('cooldown-bar');
+const cooldownNum = document.getElementById('cooldown-num');
+
+/* ============================================================
+   RENDER — базовый рендер без анимации
+   ============================================================ */
+function renderMaze(playerOverride) {
+    const pos = playerOverride || playerPos;
+    mazeEl.innerHTML = '';
+    for (let r = 0; r < MAZE.length; r++) {
+        for (let c = 0; c < MAZE[r].length; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'maze-cell';
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            const v = MAZE[r][c];
+
+            if (v === 0) cell.classList.add('wall');
+            else if (v === 2) cell.classList.add('start');
+            else if (v === 3) cell.classList.add('goal');
+            else cell.classList.add('path');
+
+            if (r === pos.row && c === pos.col) {
+                cell.classList.add('player');
+                cell.textContent = '🧑';
+            } else if (v === 3) {
+                cell.textContent = '🏁';
+            }
+
+            mazeEl.appendChild(cell);
+        }
+    }
+}
+
+/* ============================================================
+   ПОЛУЧИТЬ КЛЕТКУ ПО КООРДИНАТАМ
+   ============================================================ */
+function getCell(row, col) {
+    return mazeEl.querySelector(`.maze-cell[data-row="${row}"][data-col="${col}"]`);
+}
+
+/* ============================================================
+   УБРАТЬ ИГРОКА С КЛЕТКИ (плавно)
+   ============================================================ */
+function clearPlayer(row, col, leaveTrail = true) {
+    const cell = getCell(row, col);
+    if (!cell) return;
+    cell.classList.remove('player');
+    cell.textContent = '';
+    if (leaveTrail) {
+        cell.classList.add('trail');
+        setTimeout(() => cell.classList.remove('trail'), 1200);
+    }
+}
+
+/* ============================================================
+   ПОСТАВИТЬ ИГРОКА НА КЛЕТКУ (с анимацией)
+   ============================================================ */
+function placePlayer(row, col, animate = true) {
+    const cell = getCell(row, col);
+    if (!cell) return;
+    cell.classList.add('player');
+    cell.textContent = '🧑';
+    if (!animate) {
+        cell.style.animation = 'none';
+    }
+}
+
+/* ============================================================
+   АНИМАЦИЯ ДВИЖЕНИЯ ПО ПУТИ
+   path — массив [{row, col}, ...] включая стартовую позицию
+   ============================================================ */
+async function animatePath(path, isTeleport = false) {
+    if (path.length < 2) return;
+    animating = true;
+
+    if (isTeleport) {
+        // особый случай — вспышка на старой, вспышка на новой
+        const from = path[0];
+        const to = path[path.length - 1];
+
+        const fromCell = getCell(from.row, from.col);
+        if (fromCell) fromCell.classList.add('teleport-out');
+
+        await sleep(300);
+
+        clearPlayer(from.row, from.col, false);
+        if (fromCell) fromCell.classList.remove('teleport-out');
+
+        const toCell = getCell(to.row, to.col);
+        if (toCell) toCell.classList.add('teleport-in');
+
+        placePlayer(to.row, to.col, true);
+
+        await sleep(TELEPORT_MS);
+        if (toCell) toCell.classList.remove('teleport-in');
+
+        animating = false;
+        return;
+    }
+
+    // обычное движение — по одному блоку
+    for (let i = 1; i < path.length; i++) {
+        const prev = path[i - 1];
+        const curr = path[i];
+
+        clearPlayer(prev.row, prev.col, true);
+        placePlayer(curr.row, curr.col, true);
+
+        await sleep(STEP_MS);
+    }
+
+    animating = false;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* ============================================================
+   СООБЩЕНИЕ
+   ============================================================ */
+function showMessage(text, type = 'danger') {
+    msgEl.className = `alert alert-${type} mt-3 mb-0`;
+    msgEl.textContent = text;
+    setTimeout(() => { msgEl.className = 'alert mt-3 mb-0 d-none'; }, 2500);
+}
+
+/* ============================================================
+   COOLDOWN
+   ============================================================ */
+function startCooldown(seconds = COOLDOWN_SECONDS) {
+    cooldownActive = true;
+    dpad.classList.add('disabled');
+    cooldownBox.classList.remove('cooldown-hidden');
+
+    const startTime = Date.now();
+    const totalMs = seconds * 1000;
+    if (cooldownInterval) clearInterval(cooldownInterval);
+
+    cooldownInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, totalMs - elapsed);
+        const percent = 100 - (remaining / totalMs) * 100;
+
+        cooldownBar.style.width = percent + '%';
+        cooldownNum.textContent = Math.ceil(remaining / 1000);
+
+        if (remaining <= 0) {
+            clearInterval(cooldownInterval);
+            cooldownInterval = null;
+            cooldownActive = false;
+            dpad.classList.remove('disabled');
+            cooldownBox.classList.add('cooldown-hidden');
+            cooldownBar.style.width = '0%';
+
+            if (queuedAction) {
+                setActiveAction(queuedAction);
+                queuedAction = null;
+            }
+        }
+    }, 50);
+}
+
+function setActiveAction(action) {
+    selectedAction = action;
+    document.querySelectorAll('.action-btn').forEach(b => {
+        b.classList.remove('active', 'queued');
+        if (b.dataset.action === action) {
+            b.classList.add('active');
+        }
+    });
+}
+
+document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if (cooldownActive) {
+            queuedAction = action;
+            document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('queued'));
+            btn.classList.add('queued');
+            showMessage('✅ Действие выбрано. Применится после кулдауна', 'info');
+        } else {
+            setActiveAction(action);
+        }
+    });
+});
+
+document.querySelectorAll('[data-dir]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (cooldownActive || animating) return;
+        sendMove(btn.dataset.dir);
+    });
+});
+
+/* ============================================================
+   ОТПРАВКА ХОДА
+   ============================================================ */
+function sendMove(direction) {
+    const startPos = { ...playerPos };
+
+    const fd = new FormData();
+    fd.append('action', selectedAction);
+    fd.append('direction', direction || '');
+
+    fetch("{% url 'games:maze_move' game.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        body: fd,
+    })
+    .then(r => {
+        if (r.status === 429) {
+            return r.json().then(d => {
+                startCooldown(d.cooldown_remaining || COOLDOWN_SECONDS);
+                throw { handled: true };
+            });
+        }
+        return r.json();
+    })
+    .then(async data => {
+        if (data.error) {
+            const msgs = {
+                'not_enough_points': 'Не хватает баллов! 😢',
+                'wall': 'Там стена 🧱',
+                'blocked': 'Путь закрыт 🧱',
+                'cooldown': 'Подожди немного…',
+            };
+            showMessage(msgs[data.error] || 'Ошибка хода');
+            return;
+        }
+
+        const endPos = data.position;
+        const wasTeleport = selectedAction === 'teleport';
+
+        // СТРОИМ ПУТЬ от startPos до endPos
+        let path = [];
+        if (wasTeleport) {
+            path = [startPos, endPos];
+        } else {
+            path = buildPath(startPos, endPos);
+        }
+
+        // ЗАПУСКАЕМ АНИМАЦИЮ
+        await animatePath(path, wasTeleport);
+
+        // ОБНОВЛЯЕМ СОСТОЯНИЕ
+        playerPos = endPos;
+        document.getElementById('remaining').textContent = data.remaining;
+        document.getElementById('spent').textContent = data.spent_points;
+
+        // ФИНАЛЬНЫЙ РЕНДЕР (на случай если что-то поехало)
+        renderMaze();
+
+        if (wasTeleport) {
+            showMessage('✨ Телепорт! Ты оказался в случайном месте', 'info');
+        }
+
+        if (data.is_finished) {
+            showMessage('🎉 Ты дошёл до выхода! Молодец!', 'success');
+            setTimeout(() => {
+                window.location.href = "{% url 'games:results' game.id %}";
+            }, 1500);
+            return;
+        }
+
+        startCooldown(COOLDOWN_SECONDS);
+    })
+    .catch(err => {
+        if (err && err.handled) return;
+        console.error(err);
+        showMessage('Ошибка сети');
+    });
+}
+
+/* ============================================================
+   ПОСТРОИТЬ ПУТЬ между двумя клетками
+   (идём по одной клетке по прямой — вверх/вниз/влево/вправо)
+   ============================================================ */
+function buildPath(from, to) {
+    const path = [{ row: from.row, col: from.col }];
+
+    let r = from.row;
+    let c = from.col;
+
+    // сначала по строке
+    while (r !== to.row) {
+        r += r < to.row ? 1 : -1;
+        path.push({ row: r, col: c });
+    }
+    // потом по столбцу
+    while (c !== to.col) {
+        c += c < to.col ? 1 : -1;
+        path.push({ row: r, col: c });
+    }
+
+    return path;
+}
+
+/* ============================================================
+   СТАРТ
+   ============================================================ */
+renderMaze();
+</script>
+{% endblock %}

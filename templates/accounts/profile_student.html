@@ -1,13 +1,459 @@
 {% extends "base.html" %}
+{% block title %}Мой кабинет{% endblock %}
+
 {% block content %}
-<h1>Мой кабинет</h1>
-<p>Всего баллов: <strong>{{ total }}</strong></p>
-<h2>История</h2>
-<ul>
-{% for tx in history %}
-    <li>{{ tx.created_at|date:"d.m.Y H:i" }} — {{ tx.points }} — {{ tx.comment }}</li>
-{% empty %}
-    <li>Пока нет начислений</li>
-{% endfor %}
-</ul>
+<div class="container py-5">
+
+    <!-- ШАПКА ПРОФИЛЯ -->
+    <div class="profile-header mb-4">
+        <div class="profile-avatar-wrap">
+            {% if user.avatar %}
+                <img src="{{ user.avatar.url }}" alt="avatar" class="profile-avatar-img">
+            {% else %}
+                <div class="profile-avatar-emoji">{{ user.avatar_emoji }}</div>
+            {% endif %}
+        </div>
+        <div class="profile-info">
+            <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
+            <div class="profile-tags">
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                    <i class="bi bi-mortarboard-fill"></i> Ученик
+                </span>
+                {% if user.school_class %}
+                    <span class="badge bg-info-subtle text-info rounded-pill px-3 py-2">
+                        <i class="bi bi-people-fill"></i> {{ user.school_class.name }}
+                    </span>
+                {% endif %}
+                {% if rank %}
+                    <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2">
+                        <i class="bi bi-trophy-fill"></i> {{ rank }} место в классе
+                    </span>
+                {% endif %}
+                {% if global_rank %}
+                    <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">
+                        <i class="bi bi-globe"></i> #{{ global_rank }} в школе
+                    </span>
+                {% endif %}
+            </div>
+            <a href="{% url 'accounts:profile_edit' %}" class="btn btn-outline-primary rounded-pill mt-3">
+                <i class="bi bi-pencil"></i> Редактировать профиль
+            </a>
+        </div>
+    </div>
+
+    <!-- КАРТОЧКИ СТАТИСТИКИ -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-primary-soft">
+                    <i class="bi bi-star-fill text-primary"></i>
+                </div>
+                <div class="stat-value">{{ total_score }}</div>
+                <div class="stat-label">баллов всего</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-warning-soft">
+                    <i class="bi bi-controller text-warning"></i>
+                </div>
+                <div class="stat-value">{{ games_played }}</div>
+                <div class="stat-label">игр сыграно</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-success-soft">
+                    <i class="bi bi-trophy text-success"></i>
+                </div>
+                <div class="stat-value">{{ games_finished }}</div>
+                <div class="stat-label">лабиринтов</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-mini">
+                <div class="stat-icon bg-info-soft">
+                    <i class="bi bi-bullseye text-info"></i>
+                </div>
+                <div class="stat-value">{{ accuracy }}%</div>
+                <div class="stat-label">точность</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ГРАФИК + ОТВЕТЫ -->
+    <div class="row g-4 mb-4">
+        <!-- ГРАФИК 7 ДНЕЙ -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">
+                        <i class="bi bi-graph-up text-primary"></i> Баллы за последние 7 дней
+                    </h5>
+
+                    <div class="chart-bars">
+                        {% for d in chart_data %}
+                            <div class="chart-bar-wrap">
+                                <div class="chart-bar-value">{{ d.value }}</div>
+                                <div class="chart-bar"
+                                     style="height: {% widthratio d.value max_chart 100 %}%">
+                                </div>
+                                <div class="chart-bar-label">{{ d.label }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row g-2 mt-4 pt-3 border-top">
+                        <div class="col-6">
+                            <div class="small text-muted">За неделю</div>
+                            <div class="fw-bold fs-5 text-primary">+{{ score_week }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">За месяц</div>
+                            <div class="fw-bold fs-5 text-success">+{{ score_month }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПРАВИЛЬНЫЕ / НЕПРАВИЛЬНЫЕ -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">
+                        <i class="bi bi-clipboard-check text-primary"></i> Ответы
+                    </h5>
+
+                    <div class="answer-stats">
+                        <div class="answer-stat-row">
+                            <div class="answer-stat-label">
+                                <span class="dot dot-success"></span>
+                                Правильные
+                            </div>
+                            <div class="answer-stat-value text-success">
+                                {{ correct_answers }}
+                            </div>
+                        </div>
+                        <div class="answer-stat-row">
+                            <div class="answer-stat-label">
+                                <span class="dot dot-danger"></span>
+                                Неправильные
+                            </div>
+                            <div class="answer-stat-value text-danger">
+                                {{ wrong_answers }}
+                            </div>
+                        </div>
+                        <div class="answer-stat-row">
+                            <div class="answer-stat-label">
+                                <span class="dot dot-secondary"></span>
+                                Всего
+                            </div>
+                            <div class="answer-stat-value">
+                                {{ total_answers }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="small text-muted">Средний балл</div>
+                                <div class="fw-bold fs-5">{{ avg_quiz }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small text-muted">Лучший балл</div>
+                                <div class="fw-bold fs-5 text-warning">{{ best_quiz }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ДОСТИЖЕНИЯ -->
+    {% if achievements %}
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-award-fill text-warning"></i> Достижения
+                    <span class="badge bg-warning-subtle text-warning ms-1">{{ achievements|length }}</span>
+                </h5>
+                <div class="achievement-grid">
+                    {% for a in achievements %}
+                        <div class="achievement">
+                            <div class="achievement-emoji">{{ a.emoji }}</div>
+                            <div class="achievement-title">{{ a.title }}</div>
+                            <div class="achievement-desc">{{ a.desc }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- ИСТОРИЯ -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-clock-history text-primary"></i> Последние баллы
+                    </h5>
+
+                    {% for tx in history %}
+                        <div class="history-item">
+                            <div class="history-emoji">
+                                {% if tx.points >= 0 %}⭐{% else %}⚠️{% endif %}
+                            </div>
+                            <div class="history-body">
+                                <div class="history-title">
+                                    {{ tx.comment|default:"Начисление" }}
+                                </div>
+                                <div class="history-date">
+                                    {{ tx.created_at|date:"d.m.Y H:i" }}
+                                </div>
+                            </div>
+                            <div class="history-points {% if tx.points >= 0 %}positive{% else %}negative{% endif %}">
+                                {% if tx.points >= 0 %}+{% endif %}{{ tx.points }}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">Пока нет начислений</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ПОСЛЕДНИЕ ИГРЫ -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-controller text-primary"></i> Последние игры
+                    </h5>
+
+                    {% for s in recent_games %}
+                        <div class="recent-game-item">
+                            <div class="recent-game-info">
+                                <div class="fw-bold">{{ s.game.title }}</div>
+                                <div class="small text-muted">
+                                    {{ s.joined_at|date:"d.m.Y" }} ·
+                                    {{ s.quiz_score }} баллов
+                                </div>
+                            </div>
+                            {% if s.is_finished %}
+                                <span class="badge bg-success-subtle text-success rounded-pill">✅</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill">—</span>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">Пока не играл</p>
+                    {% endfor %}
+
+                    <a href="{% url 'games:list' %}"
+                       class="btn btn-primary rounded-pill w-100 mt-3">
+                        <i class="bi bi-play-fill"></i> К играм
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.profile-header {
+    background: linear-gradient(135deg, #eef2ff 0%, #fce7f3 100%);
+    border-radius: 24px;
+    padding: 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+.profile-avatar-wrap {
+    flex-shrink: 0;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 32px -8px rgba(99,102,241,0.4);
+    border: 4px solid white;
+}
+.profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar-emoji { font-size: 72px; line-height: 1; }
+.profile-name {
+    font-size: 32px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+}
+.profile-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.stat-card-mini {
+    background: white;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 4px 16px -4px rgba(99,102,241,0.12);
+    text-align: center;
+    height: 100%;
+    transition: transform 0.2s;
+}
+.stat-card-mini:hover { transform: translateY(-3px); }
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+.stat-value { font-size: 28px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.stat-label { font-size: 13px; color: #6b7280; font-weight: 600; }
+
+/* ГРАФИК */
+.chart-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    height: 180px;
+    padding: 0 4px;
+}
+.chart-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    position: relative;
+}
+.chart-bar {
+    width: 100%;
+    max-width: 40px;
+    background: linear-gradient(180deg, #6366f1, #8b5cf6);
+    border-radius: 8px 8px 4px 4px;
+    min-height: 4px;
+    transition: height 0.5s ease-out;
+    box-shadow: 0 4px 12px -4px rgba(99,102,241,0.5);
+}
+.chart-bar-value {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    margin-bottom: 4px;
+}
+.chart-bar-label {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 6px;
+    font-weight: 600;
+}
+
+/* ОТВЕТЫ */
+.answer-stats { display: flex; flex-direction: column; gap: 12px; }
+.answer-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f5;
+}
+.answer-stat-row:last-child { border-bottom: none; }
+.answer-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 14px;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-success { background: #10b981; }
+.dot-danger { background: #ef4444; }
+.dot-secondary { background: #9ca3af; }
+.answer-stat-value { font-weight: 900; font-size: 18px; }
+
+/* ДОСТИЖЕНИЯ */
+.achievement-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+.achievement {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid #fde68a;
+    transition: transform 0.2s;
+}
+.achievement:hover { transform: translateY(-3px) scale(1.03); }
+.achievement-emoji { font-size: 32px; margin-bottom: 6px; }
+.achievement-title { font-weight: 800; font-size: 13px; margin-bottom: 2px; }
+.achievement-desc { font-size: 11px; color: #92400e; }
+
+/* ИСТОРИЯ */
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f5;
+}
+.history-item:last-child { border-bottom: none; }
+.history-emoji {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    background: #f8f9ff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.history-body { flex-grow: 1; }
+.history-title { font-weight: 600; font-size: 14px; }
+.history-date { font-size: 12px; color: #9ca3af; }
+.history-points { font-weight: 900; font-size: 18px; }
+.history-points.positive { color: #10b981; }
+.history-points.negative { color: #ef4444; }
+
+.recent-game-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f5;
+}
+.recent-game-item:last-child { border-bottom: none; }
+.recent-game-info { flex-grow: 1; min-width: 0; }
+
+.bg-primary-soft { background: rgba(99,102,241,0.12); }
+.bg-warning-soft { background: rgba(245,158,11,0.14); }
+.bg-success-soft { background: rgba(34,197,94,0.14); }
+.bg-info-soft    { background: rgba(14,165,233,0.14); }
+.bg-danger-soft  { background: rgba(239,68,68,0.14); }
+
+@media (max-width: 576px) {
+    .profile-header { padding: 24px; text-align: center; justify-content: center; }
+    .profile-avatar-wrap { width: 100px; height: 100px; }
+    .profile-avatar-emoji { font-size: 60px; }
+    .profile-name { font-size: 24px; }
+    .profile-tags { justify-content: center; }
+    .chart-bars { height: 140px; }
+}
+</style>
 {% endblock %}

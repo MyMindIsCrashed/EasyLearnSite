@@ -1,27 +1,261 @@
 {% extends "base.html" %}
+{% block title %}Лидеры{% endblock %}
+
 {% block content %}
-<h1>🏆 Лидеры</h1>
-<form method="get">
-    <select name="class" onchange="this.form.submit()">
-        <option value="">Все классы</option>
-        {% for c in classes %}
-            <option value="{{ c.id }}"
-                {% if selected_class == c.id|stringformat:"s" %}selected{% endif %}>
-                {{ c.name }}
-            </option>
-        {% endfor %}
-    </select>
-</form>
-<ol>
-{% for s in students %}
-    <li>
-        {{ s.get_full_name|default:s.username }} — {{ s.total|default:0 }} баллов
-        {% if user.is_teacher %}
-            <a href="{% url 'scores:give_points' s.id %}">[+]</a>
+<div class="container py-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="section-title mb-1">🏆 Лидеры</h1>
+            <p class="text-muted mb-0">Самые активные ученики</p>
+        </div>
+        <form method="get" class="d-flex gap-2">
+            <select name="class" class="form-select rounded-pill" onchange="this.form.submit()">
+                <option value="">Все классы</option>
+                {% for c in classes %}
+                    <option value="{{ c.id }}"
+                        {% if selected_class == c.id|stringformat:"s" %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if students %}
+
+        {% if students|length >= 3 %}
+            <div class="podium">
+
+                <a href="{% url 'accounts:user_profile' students.1.id %}" class="podium-item">
+                    <div class="podium-avatar">
+                        {% include 'includes/avatar.html' with user=students.1 size=72 %}
+                    </div>
+                    <div class="podium-medal">🥈</div>
+                    <div class="podium-name">
+                        {{ students.1.get_full_name|default:students.1.username }}
+                    </div>
+                    <div class="podium-score">{{ students.1.total|default:0 }}</div>
+                    <div class="podium-block podium-block-2">
+                        <span>2</span>
+                    </div>
+                </a>
+
+                <a href="{% url 'accounts:user_profile' students.0.id %}" class="podium-item">
+                    <div class="podium-avatar podium-avatar-1">
+                        {% include 'includes/avatar.html' with user=students.0 size=90 %}
+                    </div>
+                    <div class="podium-medal">🥇</div>
+                    <div class="podium-name">
+                        {{ students.0.get_full_name|default:students.0.username }}
+                    </div>
+                    <div class="podium-score">{{ students.0.total|default:0 }}</div>
+                    <div class="podium-block podium-block-1">
+                        <span>1</span>
+                    </div>
+                </a>
+
+                <a href="{% url 'accounts:user_profile' students.2.id %}" class="podium-item">
+                    <div class="podium-avatar">
+                        {% include 'includes/avatar.html' with user=students.2 size=72 %}
+                    </div>
+                    <div class="podium-medal">🥉</div>
+                    <div class="podium-name">
+                        {{ students.2.get_full_name|default:students.2.username }}
+                    </div>
+                    <div class="podium-score">{{ students.2.total|default:0 }}</div>
+                    <div class="podium-block podium-block-3">
+                        <span>3</span>
+                    </div>
+                </a>
+
+            </div>
         {% endif %}
-    </li>
-{% empty %}
-    <li>Пока никого нет</li>
-{% endfor %}
-</ol>
+
+        {% if students|length > 3 %}
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
+                <div class="card-body p-3 p-md-4">
+                    <ol class="list-unstyled mb-0">
+                        {% for s in students %}
+                            {% if forloop.counter > 3 %}
+                                <li class="leaderboard-item">
+                                    <div class="leaderboard-rank">{{ forloop.counter }}</div>
+
+                                    {% include 'includes/avatar.html' with user=s size=40 link=True %}
+
+                                    <div class="leaderboard-info">
+                                        <a href="{% url 'accounts:user_profile' s.id %}"
+                                           class="text-decoration-none fw-bold text-dark">
+                                            {{ s.get_full_name|default:s.username }}
+                                        </a>
+                                        {% if s.school_class %}
+                                            <div class="small text-muted">{{ s.school_class.name }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="leaderboard-score">
+                                        {{ s.total|default:0 }}
+                                        <span class="small text-muted">баллов</span>
+                                    </div>
+
+                                    {% if user.is_teacher %}
+                                        <a href="{% url 'scores:give_points' s.id %}"
+                                           class="btn btn-sm btn-outline-primary rounded-circle ms-2"
+                                           title="Начислить баллы">
+                                            <i class="bi bi-plus"></i>
+                                        </a>
+                                    {% endif %}
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ol>
+                </div>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <div class="text-center py-5">
+            <div style="font-size: 80px;">🏜️</div>
+            <p class="text-muted mb-0">Пока никого нет</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<style>
+/* ПОДИУМ */
+.podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    padding: 40px 16px 0;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.podium-item {
+    flex: 1;
+    max-width: 200px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.25s;
+    cursor: pointer;
+}
+.podium-item:hover {
+    transform: translateY(-6px);
+    text-decoration: none;
+    color: inherit;
+}
+
+.podium-avatar {
+    margin-bottom: 8px;
+    position: relative;
+}
+.podium-avatar-1 {
+    filter: drop-shadow(0 0 20px rgba(251,191,36,0.6));
+}
+
+.podium-medal {
+    font-size: 32px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.podium-name {
+    font-weight: 800;
+    font-size: 15px;
+    text-align: center;
+    margin-bottom: 4px;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.podium-score {
+    font-weight: 900;
+    font-size: 20px;
+    color: #6366f1;
+    margin-bottom: 12px;
+}
+
+.podium-block {
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12px;
+    font-size: 32px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.9);
+    position: relative;
+    overflow: hidden;
+}
+.podium-block::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
+    pointer-events: none;
+}
+
+.podium-block-1 {
+    height: 140px;
+    background: linear-gradient(180deg, #fbbf24, #f59e0b);
+    box-shadow: 0 -8px 32px -8px rgba(251,191,36,0.6);
+}
+.podium-block-2 {
+    height: 110px;
+    background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+    box-shadow: 0 -8px 32px -8px rgba(203,213,225,0.6);
+}
+.podium-block-3 {
+    height: 90px;
+    background: linear-gradient(180deg, #d97706, #b45309);
+    box-shadow: 0 -8px 32px -8px rgba(217,119,6,0.6);
+}
+
+/* СПИСОК ОСТАЛЬНЫХ */
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 8px;
+    border-bottom: 1px solid #f0f0f5;
+    transition: background 0.15s;
+    border-radius: 12px;
+}
+.leaderboard-item:hover { background: #f8f9ff; }
+.leaderboard-item:last-child { border-bottom: none; }
+.leaderboard-rank {
+    width: 40px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 800;
+    flex-shrink: 0;
+    color: #6b7280;
+}
+.leaderboard-info { flex-grow: 1; min-width: 0; }
+.leaderboard-score {
+    font-weight: 900;
+    font-size: 20px;
+    color: #6366f1;
+    flex-shrink: 0;
+}
+.leaderboard-score .small { font-size: 12px; font-weight: 600; }
+
+@media (max-width: 576px) {
+    .podium { gap: 8px; padding: 20px 8px 0; }
+    .podium-name { font-size: 12px; }
+    .podium-score { font-size: 16px; }
+    .podium-block-1 { height: 110px; }
+    .podium-block-2 { height: 85px; }
+    .podium-block-3 { height: 70px; }
+    .podium-block span { font-size: 24px; }
+    .podium-medal { font-size: 26px; }
+}
+</style>
 {% endblock %}

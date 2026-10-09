@@ -1,0 +1,49 @@
+{% comment %}
+Универсальный шаблон аватарки.
+
+Использование:
+  {% include 'includes/avatar.html' with user=some_user size=40 %}
+  {% include 'includes/avatar.html' with user=some_user size=40 link=True %}
+
+Параметры:
+  user      — объект пользователя (обязательный)
+  size      — размер в пикселях (по умолчанию 40)
+  css_class — дополнительные CSS-классы (необязательный)
+  link      — если True, оборачивает в ссылку на профиль
+{% endcomment %}
+
+{% if link %}<a href="{% url 'accounts:user_profile' user.id %}" class="avatar-link text-decoration-none">{% endif %}
+
+{% if user.avatar %}
+    <img src="{{ user.avatar.url }}"
+         alt="{{ user.username }}"
+         class="{{ css_class|default:'' }}"
+         style="width: {{ size|default:40 }}px;
+                height: {{ size|default:40 }}px;
+                border-radius: 50%;
+                object-fit: cover;
+                flex-shrink: 0;
+                display: inline-block;
+                vertical-align: middle;
+                border: 2px solid #fff;
+                box-shadow: 0 2px 8px -2px rgba(99,102,241,0.3);
+                overflow: hidden;">
+{% else %}
+    <span class="{{ css_class|default:'' }}"
+          style="display: inline-flex;
+                 align-items: center;
+                 justify-content: center;
+                 width: {{ size|default:40 }}px;
+                 height: {{ size|default:40 }}px;
+                 font-size: {{ size|default:40|add:"-10" }}px;
+                 line-height: 1;
+                 border-radius: 50%;
+                 background: linear-gradient(135deg, #eef2ff, #fce7f3);
+                 flex-shrink: 0;
+                 border: 2px solid #fff;
+                 box-shadow: 0 2px 8px -2px rgba(99,102,241,0.3);">
+        {{ user.avatar_emoji|default:"🧑" }}
+    </span>
+{% endif %}
+
+{% if link %}</a>{% endif %}
