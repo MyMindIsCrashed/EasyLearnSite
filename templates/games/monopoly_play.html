@@ -2,77 +2,77 @@
 {% block title %}Монополия{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid py-4 monopoly-page">
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 class="h4 fw-bold mb-0">🎲 Монополия</h1>
+        <h1 class="h5 fw-bold mb-0">🎲 Монополия</h1>
         <div class="d-flex gap-2 flex-wrap">
-            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1">
                 Ход #<span id="turn-number">{{ monopoly.turn_number }}</span>
             </span>
             {% if card_info %}
-                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2" id="my-card-badge">
+                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-1">
                     {{ card_info.emoji }} {{ card_info.name }}
                 </span>
             {% endif %}
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
-        <div class="monopoly-map" id="track"></div>
-    </div>
+    <div class="board-wrap">
+        <div class="board" id="track"></div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3 text-center">
-        <div id="turn-status" class="mb-3">
-            <div class="fs-5 fw-bold text-muted">Загрузка…</div>
-        </div>
-
-        <button id="roll-btn" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm d-none">
-            🎲 Бросить кубик
-        </button>
-
-        <div id="roulette" class="roulette-container d-none">
-            <div class="roulette-window">
-                <div class="roulette-track" id="roulette-track"></div>
-                <div class="roulette-center-line"></div>
-                <div class="roulette-pointer">▼</div>
+        <div class="board-center">
+            <div id="turn-status" class="center-status">
+                <div class="fs-5 fw-bold text-muted">Загрузка…</div>
             </div>
-        </div>
 
-        <div id="dice-result" class="mt-3 d-none">
-            <div class="result-wrapper">
-                <div class="result-cell result-main">
-                    <div class="dice-big" id="dice-value">?</div>
-                </div>
-                <div class="result-cell result-modifier d-none" id="modifier-cell">
-                    <div class="dice-mod" id="dice-modifier">+3</div>
-                </div>
-                <div class="result-cell result-equals d-none" id="equals-cell">
-                    <div class="dice-equals">=</div>
-                </div>
-                <div class="result-cell result-total d-none" id="total-cell">
-                    <div class="dice-total" id="dice-total">?</div>
+            <button id="roll-btn" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow d-none">
+                🎲 Бросить кубик
+            </button>
+
+            <div id="roulette" class="roulette-container d-none">
+                <div class="roulette-window">
+                    <div class="roulette-track" id="roulette-track"></div>
+                    <div class="roulette-center-line"></div>
+                    <div class="roulette-pointer">▼</div>
                 </div>
             </div>
-            <div id="dice-event" class="mt-3 fw-bold"></div>
-        </div>
 
-        <div id="message" class="alert mt-3 mb-0 d-none"></div>
+            <div id="dice-result" class="d-none mt-1">
+                <div class="result-wrapper">
+                    <div class="result-cell result-main">
+                        <div class="dice-big" id="dice-value">?</div>
+                    </div>
+                    <div class="result-cell result-modifier d-none" id="modifier-cell">
+                        <div class="dice-mod" id="dice-modifier">+3</div>
+                    </div>
+                    <div class="result-cell result-equals d-none" id="equals-cell">
+                        <div class="dice-equals">=</div>
+                    </div>
+                    <div class="result-cell result-total d-none" id="total-cell">
+                        <div class="dice-total" id="dice-total">?</div>
+                    </div>
+                </div>
+                <div id="dice-event" class="mt-1 fw-bold small"></div>
+            </div>
+
+            <div id="message" class="alert mt-1 mb-0 d-none small py-1"></div>
+        </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-4">
-        <h5 class="fw-bold mb-3">👥 Игроки</h5>
+    <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
+        <h6 class="fw-bold mb-2">👥 Игроки</h6>
         <div class="row g-2" id="players-list">
             {% for p in players %}
-                <div class="col-6 col-md-4" data-player-id="{{ p.id }}">
+                <div class="col-6 col-md-4 col-lg-3" data-player-id="{{ p.id }}">
                     <div class="player-mini {% if p.id == player.id %}me{% endif %}">
                         <div class="d-flex align-items-center gap-2">
-                            {% include 'includes/avatar.html' with user=p.student size=32 %}
+                            {% include 'includes/avatar.html' with user=p.student size=28 %}
                             <div class="flex-grow-1 min-w-0">
                                 <div class="small fw-bold text-truncate">
                                     {% if p.id == player.id %}Ты{% else %}{{ p.student.get_full_name|default:p.student.username }}{% endif %}
                                 </div>
-                                <div class="small text-muted">
+                                <div class="text-muted" style="font-size: 11px;">
                                     Поз: <span class="pos-value">{{ p.position }}</span>
                                 </div>
                             </div>
@@ -86,171 +86,264 @@
 </div>
 
 <style>
-.monopoly-map {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
+.monopoly-page { max-width: 1200px; margin: 0 auto; }
+
+.board-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 7 / 4;
+    max-width: 1100px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+    border-radius: 28px;
+    padding: 16px;
+    box-shadow:
+        0 16px 48px -16px rgba(99,102,241,0.35),
+        inset 0 0 0 2px rgba(255,255,255,0.9);
 }
+.board { position: absolute; inset: 16px; }
+
 .track-cell {
-    min-height: 90px;
-    border-radius: 12px;
-    background: #f8f9ff;
-    border: 2px solid #e5e7f5;
+    position: absolute;
+    border-radius: 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: #4b5563;
-    position: relative;
-    transition: all 0.35s;
+    padding: 8px 6px;
+    color: #1f2937;
     text-align: center;
-    padding: 6px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.55);
+    box-shadow:
+        0 5px 12px -3px rgba(0,0,0,0.18),
+        0 2px 4px rgba(0,0,0,0.08),
+        inset 0 3px 0 rgba(255,255,255,0.6),
+        inset 0 -4px 0 rgba(0,0,0,0.12);
 }
-.track-cell-icon { font-size: 22px; margin-bottom: 2px; }
+.track-cell::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 45%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
+    pointer-events: none;
+    border-radius: 18px 18px 0 0;
+}
+.track-cell-icon {
+    font-size: 40px;
+    line-height: 1;
+    margin-bottom: 5px;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3));
+    position: relative;
+    z-index: 2;
+}
+.track-cell-label {
+    font-size: 13px;
+    line-height: 1.15;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(0,0,0,0.3);
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    position: relative;
+    z-index: 2;
+}
 .track-cell-num {
     position: absolute;
-    top: 4px;
-    right: 6px;
-    font-size: 10px;
-    color: #9ca3af;
-    font-weight: 700;
+    top: 5px;
+    left: 9px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.95);
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    z-index: 3;
+}
+
+.track-start {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #34d399 0%, #10b981 60%, #047857 100%);
+    border-color: #059669;
+}
+.track-finish {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%),
+        linear-gradient(160deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+    border-color: #b45309;
+}
+.track-boost {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #fde047 0%, #facc15 60%, #eab308 100%);
+    border-color: #ca8a04;
+}
+.track-trap {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%),
+        linear-gradient(160deg, #fb7185 0%, #ef4444 60%, #dc2626 100%);
+    border-color: #b91c1c;
+}
+.track-bonus {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #c084fc 0%, #a855f7 60%, #7e22ce 100%);
+    border-color: #6b21a8;
+}
+.track-swap {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #38bdf8 0%, #06b6d4 60%, #0891b2 100%);
+    border-color: #0e7490;
+}
+.track-empty {
+    background:
+        radial-gradient(circle at 30% 20%, #ffffff, transparent 60%),
+        linear-gradient(160deg, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
+    border-color: #cbd5e1;
+}
+.track-empty .track-cell-label {
+    color: #475569;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.08);
+}
+.track-empty .track-cell-num {
+    color: #94a3b8;
+    text-shadow: none;
+}
+
+.board-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56%;
+    height: 46%;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 22px;
+    box-shadow:
+        inset 0 0 0 2px rgba(99,102,241,0.08),
+        0 10px 30px -10px rgba(99,102,241,0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    z-index: 5;
+    gap: 8px;
+}
+.center-status {
+    text-align: center;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.track-cell-players {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px;
+    padding-top: 22px;
+    pointer-events: none;
+    z-index: 4;
 }
 .track-cell-player {
-    position: absolute;
-    bottom: 4px;
-    right: 4px;
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
     border: 2px solid #6366f1;
     overflow: hidden;
-    z-index: 10;
-    box-shadow: 0 4px 10px -2px rgba(99,102,241,0.5);
+    box-shadow: 0 2px 8px -1px rgba(99,102,241,0.7);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .track-cell-player img { width: 100%; height: 100%; object-fit: cover; }
 .track-cell-player.is-me {
     border-color: #fbbf24;
-    box-shadow: 0 0 0 3px rgba(251,191,36,0.5), 0 4px 12px -2px rgba(251,191,36,0.6);
+    box-shadow: 0 0 0 3px rgba(251,191,36,0.6), 0 3px 12px -1px rgba(251,191,36,0.9);
     z-index: 20;
+    width: 30px;
+    height: 30px;
 }
 .track-cell-player.jumping { animation: chipJump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes chipJump {
     0%   { transform: scale(1) translateY(0); }
-    40%  { transform: scale(1.4) translateY(-14px); }
-    70%  { transform: scale(1.15) translateY(-4px); }
+    40%  { transform: scale(1.4) translateY(-10px); }
+    70%  { transform: scale(1.1) translateY(-2px); }
     100% { transform: scale(1) translateY(0); }
 }
 .track-cell.me-here {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 4px rgba(99,102,241,0.35);
-    transform: scale(1.08);
-    background: #eef2ff;
+    box-shadow:
+        0 0 0 4px rgba(99,102,241,0.55),
+        0 10px 22px -4px rgba(99,102,241,0.6),
+        inset 0 3px 0 rgba(255,255,255,0.6);
+    transform: scale(1.06);
+    z-index: 6;
 }
-.track-cell.trail { background: linear-gradient(135deg, #c7d2fe, #ddd6fe); border-color: #a5b4fc; }
 .track-cell.stepping {
-    border-color: #f59e0b;
-    box-shadow: 0 0 0 4px rgba(245,158,11,0.5);
+    box-shadow:
+        0 0 0 5px rgba(245,158,11,0.6),
+        0 12px 26px -4px rgba(245,158,11,0.75);
     transform: scale(1.12);
-    background: #fef3c7;
-    z-index: 5;
+    z-index: 8;
 }
 .track-cell.arrived {
-    border-color: #10b981;
-    box-shadow: 0 0 0 4px rgba(16,185,129,0.4);
-    background: #d1fae5;
+    box-shadow:
+        0 0 0 5px rgba(16,185,129,0.6),
+        0 12px 26px -4px rgba(16,185,129,0.65);
 }
-.track-cell.modifier-hit { animation: modifierPulse 0.8s ease-out; }
+.track-cell.modifier-hit      { animation: modifierPulse 0.8s ease-out; }
 .track-cell.modifier-hit-trap { animation: modifierPulseTrap 0.8s ease-out; }
 @keyframes modifierPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.8); transform: scale(1); }
-    50%  { box-shadow: 0 0 0 14px rgba(251,191,36,0); transform: scale(1.15); }
-    100% { box-shadow: 0 0 0 4px rgba(245,158,11,0.5); transform: scale(1.12); }
+    0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.9); }
+    50%  { box-shadow: 0 0 0 18px rgba(251,191,36,0); }
+    100% { box-shadow: 0 0 0 5px rgba(245,158,11,0.6); }
 }
 @keyframes modifierPulseTrap {
-    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.8); transform: scale(1); }
-    50%  { box-shadow: 0 0 0 14px rgba(239,68,68,0); transform: scale(1.15); }
-    100% { box-shadow: 0 0 0 4px rgba(239,68,68,0.5); transform: scale(1.12); }
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.9); }
+    50%  { box-shadow: 0 0 0 18px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 5px rgba(239,68,68,0.6); }
 }
-.track-start    { background: linear-gradient(135deg, #bbf7d0, #86efac); }
-.track-finish   { background: linear-gradient(135deg, #fde68a, #fbbf24); }
-.track-boost    { background: linear-gradient(135deg, #fef3c7, #fde68a); }
-.track-trap     { background: linear-gradient(135deg, #fecaca, #fca5a5); }
-.track-bonus    { background: linear-gradient(135deg, #e9d5ff, #d8b4fe); }
-.track-swap     { background: linear-gradient(135deg, #cffafe, #a5f3fc); }
 
-.roulette-container {
-    margin: 20px auto;
-    width: 100%;
-    max-width: 500px;
-}
+.roulette-container { width: 100%; max-width: 260px; }
 .roulette-window {
     position: relative;
     width: 100%;
-    height: 120px;
+    height: 62px;
     background: linear-gradient(180deg, #1e1b4b 0%, #2a2555 50%, #1e1b4b 100%);
-    border-radius: 20px;
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: inset 0 0 30px rgba(0,0,0,0.6), 0 12px 32px -12px rgba(30, 27, 75, 0.6);
-    border: 3px solid #3d31cc;
+    box-shadow: inset 0 0 16px rgba(0,0,0,0.6), 0 6px 20px -6px rgba(30,27,75,0.6);
+    border: 2px solid #3d31cc;
 }
 .roulette-window::before,
 .roulette-window::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 90px;
-    z-index: 3;
-    pointer-events: none;
+    content: ''; position: absolute; top: 0; bottom: 0; width: 50px; z-index: 3; pointer-events: none;
 }
-.roulette-window::before {
-    left: 0;
-    background: linear-gradient(90deg, rgba(30,27,75,1) 0%, rgba(30,27,75,0.85) 50%, transparent 100%);
-}
-.roulette-window::after {
-    right: 0;
-    background: linear-gradient(-90deg, rgba(30,27,75,1) 0%, rgba(30,27,75,0.85) 50%, transparent 100%);
-}
+.roulette-window::before { left: 0; background: linear-gradient(90deg, rgba(30,27,75,1), transparent); }
+.roulette-window::after  { right: 0; background: linear-gradient(-90deg, rgba(30,27,75,1), transparent); }
 .roulette-track {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    will-change: transform;
+    position: absolute; top: 0; left: 0; height: 100%;
+    display: flex; align-items: center; will-change: transform;
 }
 .roulette-item {
-    width: 100px;
-    height: 100%;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 56px;
-    font-weight: 900;
-    color: white;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    position: relative;
-    font-family: 'Nunito', sans-serif;
-    transition: transform 0.3s;
-}
-.roulette-item::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 20%;
-    bottom: 20%;
-    width: 2px;
-    background: rgba(255,255,255,0.1);
+    width: 56px; height: 100%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 900; color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5); position: relative;
 }
 .roulette-item:nth-child(6n+1) { color: #a5b4fc; }
 .roulette-item:nth-child(6n+2) { color: #fcd34d; }
@@ -259,15 +352,9 @@
 .roulette-item:nth-child(6n+5) { color: #c4b5fd; }
 .roulette-item:nth-child(6n+6) { color: #f9a8d4; }
 .roulette-pointer {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 28px;
-    color: var(--yellow);
-    z-index: 10;
-    line-height: 1;
-    filter: drop-shadow(0 3px 6px rgba(251, 191, 36, 0.8));
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    font-size: 18px; color: #fbbf24; z-index: 10; line-height: 1;
+    filter: drop-shadow(0 3px 6px rgba(251,191,36,0.8));
     animation: pointerPulse 0.8s ease-in-out infinite;
 }
 @keyframes pointerPulse {
@@ -275,47 +362,24 @@
     50%      { transform: translateX(-50%) scale(1.15); }
 }
 .roulette-center-line {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3px;
-    background: linear-gradient(180deg, transparent, var(--yellow), transparent);
-    z-index: 4;
-    pointer-events: none;
-    opacity: 0.6;
+    position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 2px;
+    background: linear-gradient(180deg, transparent, #fbbf24, transparent);
+    z-index: 4; opacity: 0.6;
 }
 
 .result-wrapper {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    padding: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
 }
-.result-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform-origin: center;
-}
+.result-cell { display: flex; align-items: center; justify-content: center; }
 .result-main .dice-big {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 130px;
-    height: 130px;
-    font-size: 82px;
-    font-weight: 900;
-    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    width: 60px; height: 60px;
+    font-size: 34px; font-weight: 900;
     color: #78350f;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-radius: 24px;
-    box-shadow: 0 12px 32px -8px rgba(251, 191, 36, 0.5);
-    border: 3px solid #f59e0b;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 14px; border: 2px solid #f59e0b;
+    box-shadow: 0 6px 16px -4px rgba(251,191,36,0.5);
     animation: diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes diceAppear {
@@ -324,127 +388,99 @@
     100% { transform: scale(1) rotate(0); }
 }
 .result-modifier .dice-mod {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 90px;
-    height: 90px;
-    font-size: 54px;
-    font-weight: 900;
-    line-height: 1;
-    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; font-size: 22px; font-weight: 900;
+    border-radius: 11px;
     animation: modifierAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .result-modifier.boost .dice-mod {
     color: #78350f;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 3px solid #f59e0b;
-    box-shadow: 0 10px 24px -8px rgba(251, 191, 36, 0.5);
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 2px solid #f59e0b;
 }
 .result-modifier.trap .dice-mod {
     color: #7f1d1d;
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    border: 3px solid #ef4444;
-    box-shadow: 0 10px 24px -8px rgba(239, 68, 68, 0.5);
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    border: 2px solid #ef4444;
 }
 @keyframes modifierAppear {
-    0%   { transform: scale(0.3) translateX(40px) rotate(15deg); opacity: 0; }
-    60%  { transform: scale(1.15) translateX(-5px) rotate(-5deg); opacity: 1; }
-    100% { transform: scale(1) translateX(0) rotate(0); }
+    0%   { transform: scale(0.3) translateX(24px); opacity: 0; }
+    100% { transform: scale(1) translateX(0); opacity: 1; }
 }
-.result-equals .dice-equals {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    font-size: 42px;
-    font-weight: 900;
-    color: #78350f;
-    animation: equalsAppear 0.4s ease-out;
-}
-@keyframes equalsAppear {
-    0%   { transform: scale(0) rotate(-90deg); opacity: 0; }
-    100% { transform: scale(1) rotate(0); opacity: 1; }
-}
+.result-equals .dice-equals { font-size: 22px; font-weight: 900; color: #78350f; }
 .result-total .dice-total {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 160px;
-    height: 160px;
-    font-size: 92px;
-    font-weight: 900;
-    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    width: 68px; height: 68px; font-size: 34px; font-weight: 900;
     color: white;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border-radius: 28px;
-    box-shadow: 0 16px 40px -8px rgba(16, 185, 129, 0.6);
-    border: 4px solid #059669;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 16px; border: 3px solid #059669;
+    box-shadow: 0 10px 22px -6px rgba(16,185,129,0.6);
     animation: totalAppear 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
-    text-shadow: 0 3px 0 rgba(0,0,0,0.15);
 }
 .result-total.negative .dice-total {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: linear-gradient(135deg, #ef4444, #dc2626);
     border-color: #b91c1c;
 }
 @keyframes totalAppear {
     0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
     50%  { transform: scale(1.3) rotate(15deg); opacity: 1; }
-    75%  { transform: scale(0.95) rotate(-5deg); }
     100% { transform: scale(1) rotate(0); }
 }
-.result-total.pulse .dice-total { animation: totalPulse 0.6s ease-out; }
-@keyframes totalPulse {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(1.15); }
-    100% { transform: scale(1); }
-}
-.result-main.shrink .dice-big { transform: scale(0.85); opacity: 0.7; }
+.result-main.shrink .dice-big { transform: scale(0.85); opacity: 0.6; transition: all 0.6s; }
 .result-modifier.merge .dice-mod {
-    transform: scale(0.5) translateX(-80px);
-    opacity: 0;
+    transform: scale(0.5) translateX(-50px); opacity: 0;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .player-mini {
-    background: #f8f9ff;
-    border-radius: 12px;
-    padding: 8px 10px;
-    border: 2px solid transparent;
+    background: #f8f9ff; border-radius: 10px; padding: 6px 8px;
+    border: 2px solid transparent; transition: all 0.2s;
 }
-.player-mini.me {
-    background: #eef2ff;
-    border-color: #6366f1;
-}
+.player-mini.me { background: #eef2ff; border-color: #6366f1; }
 .player-mini.current {
     border-color: #fbbf24;
-    box-shadow: 0 0 0 3px rgba(251,191,36,0.25);
+    box-shadow: 0 0 0 2px rgba(251,191,36,0.25);
+    background: #fffbeb;
 }
 
-@media (max-width: 576px) {
-    .roulette-window { height: 100px; }
-    .roulette-item { width: 70px; font-size: 42px; }
-    .roulette-window::before,
-    .roulette-window::after { width: 60px; }
-    .track-cell-player { width: 28px; height: 28px; font-size: 14px; }
-    .result-main .dice-big { width: 100px; height: 100px; font-size: 64px; }
-    .result-modifier .dice-mod { width: 70px; height: 70px; font-size: 42px; }
-    .result-total .dice-total { width: 120px; height: 120px; font-size: 68px; }
-    .result-equals .dice-equals { font-size: 32px; }
-    .result-wrapper { gap: 8px; }
+@media (max-width: 900px) {
+    .board-wrap { border-radius: 20px; padding: 10px; }
+    .board { inset: 10px; }
+    .track-cell { border-radius: 12px; padding: 5px 3px; }
+    .track-cell-icon { font-size: 28px; margin-bottom: 3px; }
+    .track-cell-label { font-size: 10px; }
+    .track-cell-num { font-size: 10px; top: 3px; left: 6px; }
+    .track-cell-player { width: 20px; height: 20px; font-size: 11px; }
+    .track-cell-player.is-me { width: 24px; height: 24px; }
+    .track-cell-players { padding-top: 16px; }
+    .board-center { width: 60%; height: 52%; padding: 10px; border-radius: 16px; gap: 6px; }
+    .result-main .dice-big { width: 46px; height: 46px; font-size: 26px; }
+    .result-modifier .dice-mod { width: 34px; height: 34px; font-size: 18px; }
+    .result-total .dice-total { width: 52px; height: 52px; font-size: 26px; }
+    .result-equals .dice-equals { font-size: 16px; }
+    .roulette-window { height: 50px; }
+    .roulette-item { width: 42px; font-size: 24px; }
+    .roulette-window::before, .roulette-window::after { width: 36px; }
+}
+@media (max-width: 600px) {
+    .track-cell-icon { font-size: 22px; }
+    .track-cell-label { font-size: 8px; }
+    .track-cell-num { font-size: 8px; }
+    .track-cell-player { width: 16px; height: 16px; font-size: 9px; }
+    .track-cell-player.is-me { width: 19px; height: 19px; }
+    .track-cell-players { padding-top: 12px; }
 }
 </style>
+
+{% include 'includes/monopoly_animate.html' with my_id=player.id map=map %}
 
 <script>
 const MONOPOLY_ID = {{ monopoly.id }};
 const MY_ID = {{ player.id }};
-const MAP = {{ map|safe }};
-const MAP_LENGTH = {{ max_position }};
 
-function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
-}
+let spinning = false;
+let rolling = false;
+let pendingRedirect = false;
 
 const trackEl = document.getElementById('track');
 const statusEl = document.getElementById('turn-status');
@@ -452,122 +488,13 @@ const btn = document.getElementById('roll-btn');
 const roulette = document.getElementById('roulette');
 const rouletteTrack = document.getElementById('roulette-track');
 
-let lastPositions = {};
-let passedCells = [];
-let animating = false;
-let spinning = false;
-let rolling = false;
-let myAvatarHtml = null;
-
-function makeChipHtml(p) {
-    if (p.avatar) return `<img src="${p.avatar}" alt="">`;
-    return p.emoji || '🧑';
-}
-
-function getMyChip() {
-    return document.querySelector(`.track-cell-player[data-player-id="${MY_ID}"]`);
-}
-
-function renderMap(players) {
-    trackEl.innerHTML = '';
-    const me = players.find(p => p.id === MY_ID);
-
-    for (let i = 0; i <= MAP_LENGTH; i++) {
-        const cell = MAP[i];
-        const cellEl = document.createElement('div');
-        cellEl.className = `track-cell track-${cell.type}`;
-        cellEl.dataset.index = i;
-
-        if (passedCells.includes(i)) cellEl.classList.add('trail');
-        if (me && me.position === i) cellEl.classList.add('me-here');
-
-        const num = document.createElement('div');
-        num.className = 'track-cell-num';
-        num.textContent = i;
-        cellEl.appendChild(num);
-
-        const icon = document.createElement('div');
-        icon.className = 'track-cell-icon';
-        icon.textContent = cell.icon;
-        cellEl.appendChild(icon);
-
-        const label = document.createElement('div');
-        label.textContent = cell.label;
-        cellEl.appendChild(label);
-
-        players.filter(p => p.position === i).forEach(p => {
-            const badge = document.createElement('div');
-            badge.className = 'track-cell-player' + (p.id === MY_ID ? ' is-me' : '');
-            badge.dataset.playerId = p.id;
-            badge.title = p.name;
-            badge.innerHTML = makeChipHtml(p);
-            cellEl.appendChild(badge);
-        });
-
-        trackEl.appendChild(cellEl);
-    }
-}
-
-function moveMyChipTo(cellIndex, jump = true) {
-    const targetCell = document.querySelector(`.track-cell[data-index="${cellIndex}"]`);
-    if (!targetCell) return;
-    const existing = getMyChip();
-    if (existing && existing.parentElement === targetCell) return;
-
-    let chipHtml = myAvatarHtml || existing?.innerHTML || '🧑';
-    if (existing) existing.remove();
-
-    const newChip = document.createElement('div');
-    newChip.className = 'track-cell-player is-me';
-    newChip.dataset.playerId = MY_ID;
-    newChip.innerHTML = chipHtml;
-    targetCell.appendChild(newChip);
-
-    if (jump) {
-        newChip.classList.add('jumping');
-        setTimeout(() => newChip.classList.remove('jumping'), 400);
-    }
-    document.querySelectorAll('.track-cell.me-here').forEach(el => el.classList.remove('me-here'));
-    targetCell.classList.add('me-here');
-}
-
-async function animateMovement(from, to, markTrail = true) {
-    if (from === to) return;
-    animating = true;
-    if (markTrail) passedCells = [];
-    const meChip = getMyChip();
-    if (meChip) myAvatarHtml = meChip.innerHTML;
-
-    const step = from < to ? 1 : -1;
-    for (let i = from + step; step > 0 ? i <= to : i >= to; i += step) {
-        const cellEl = document.querySelector(`.track-cell[data-index="${i}"]`);
-        if (!cellEl) continue;
-        cellEl.classList.add('stepping');
-        moveMyChipTo(i, true);
-        await sleep(380);
-        cellEl.classList.remove('stepping');
-        if (markTrail && i !== to) {
-            cellEl.classList.add('trail');
-            passedCells.push(i);
-        }
-    }
-    const finalCell = document.querySelector(`.track-cell[data-index="${to}"]`);
-    if (finalCell) {
-        finalCell.classList.add('arrived');
-        setTimeout(() => finalCell.classList.remove('arrived'), 1200);
-    }
-    await sleep(300);
-    animating = false;
-}
-
 function spinDice(finalValue) {
     return new Promise((resolve) => {
         spinning = true;
         roulette.classList.remove('d-none');
         btn.classList.add('d-none');
 
-        const isMobile = window.innerWidth <= 576;
-        const ITEM_W = isMobile ? 70 : 100;
+        const ITEM_W = window.innerWidth <= 768 ? 42 : 56;
         const TOTAL_ITEMS = 50;
         const STOP_INDEX = 40;
 
@@ -593,7 +520,7 @@ function spinDice(finalValue) {
             rouletteTrack.style.transform = 'translateX(0)';
             void rouletteTrack.offsetWidth;
 
-            rouletteTrack.style.transition = 'transform 4.5s cubic-bezier(0.1, 0.95, 0.2, 1)';
+            rouletteTrack.style.transition = 'transform 3.6s cubic-bezier(0.1, 0.95, 0.2, 1)';
             rouletteTrack.style.transform = `translateX(-${offset}px)`;
 
             setTimeout(() => {
@@ -604,8 +531,8 @@ function spinDice(finalValue) {
                     roulette.classList.add('d-none');
                     spinning = false;
                     resolve();
-                }, 1000);
-            }, 4500);
+                }, 900);
+            }, 3600);
         });
     });
 }
@@ -619,73 +546,66 @@ function resetResultUI() {
     document.querySelector('.result-main').classList.remove('shrink');
 }
 
+function showMessage(text, type = 'danger') {
+    const el = document.getElementById('message');
+    el.className = `alert alert-${type} mt-1 mb-0 small py-1`;
+    el.textContent = text;
+    setTimeout(() => { el.className = 'alert mt-1 mb-0 d-none small py-1'; }, 4000);
+}
+
 async function refreshState() {
     try {
         const r = await fetch("{% url 'games:monopoly_state' monopoly.id %}");
         const data = await r.json();
 
         document.getElementById('turn-number').textContent = data.turn_number;
-
         const me = data.players.find(p => p.id === MY_ID);
 
-        if (spinning || animating || rolling) {
-            data.players.forEach(p => {
-                const card = document.querySelector(`[data-player-id="${p.id}"]`);
-                if (card) {
-                    const posEl = card.querySelector('.pos-value');
-                    if (posEl) posEl.textContent = p.position;
-                }
-            });
+        // Пока идёт мой бросок — не анимируем параллельно
+        if (rolling || spinning) {
+            data.players.forEach(p => { mnoLastPositions[p.id] = p.position; });
+            updateMiniCards(data);
             return;
         }
 
-        if (me && lastPositions[MY_ID] !== undefined && lastPositions[MY_ID] !== me.position) {
-            const from = lastPositions[MY_ID];
-            const to = me.position;
-            renderMap(data.players);
-            await animateMovement(from, to);
-        } else {
-            renderMap(data.players);
-        }
-
-        data.players.forEach(p => { lastPositions[p.id] = p.position; });
-
-        data.players.forEach(p => {
-            const card = document.querySelector(`[data-player-id="${p.id}"]`);
-            if (card) {
-                const posEl = card.querySelector('.pos-value');
-                if (posEl) posEl.textContent = p.position;
-                const mini = card.querySelector('.player-mini');
-                if (mini) mini.classList.toggle('current', p.id === data.current_player_id);
-            }
-        });
+        await mnoRenderPlayers(trackEl, data.players);
+        updateMiniCards(data);
 
         if (data.status === 'finished') {
-            statusEl.innerHTML = '<div class="fs-4 fw-bold text-success">🏆 Игра завершена!</div>';
+            statusEl.innerHTML = '<div class="fs-5 fw-bold text-success">🏆 Игра завершена!</div>';
             btn.classList.add('d-none');
-            setTimeout(() => {
-                window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
-            }, 1500);
+
+            if (!pendingRedirect) {
+                pendingRedirect = true;
+                const waitRedirect = setInterval(() => {
+                    if (!mnoAnimating) {
+                        clearInterval(waitRedirect);
+                        setTimeout(() => {
+                            window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
+                        }, 1500);
+                    }
+                }, 200);
+            }
             return;
         }
 
         if (data.status === 'waiting') {
-            statusEl.innerHTML = '<div class="fs-5 fw-bold text-muted">⏳ Ждём остальных…</div>';
+            statusEl.innerHTML = '<div class="fs-6 fw-bold text-muted">⏳ Ждём остальных…</div>';
             btn.classList.add('d-none');
             return;
         }
 
         if (me && me.is_finished) {
-            statusEl.innerHTML = '<div class="fs-5 fw-bold text-success">🎉 Ты на финише!</div>';
+            statusEl.innerHTML = '<div class="fs-6 fw-bold text-success">🎉 Ты на финише! Ждём остальных…</div>';
             btn.classList.add('d-none');
             return;
         }
 
         if (data.current_player_id === MY_ID) {
-            statusEl.innerHTML = '<div class="fs-5 fw-bold text-primary">🎲 Твой ход!</div>';
+            statusEl.innerHTML = '<div class="fs-6 fw-bold text-primary">🎲 Твой ход!</div>';
             btn.classList.remove('d-none');
         } else {
-            statusEl.innerHTML = `<div class="fs-5 fw-bold text-muted">Ждём: ${data.current_player_name || '…'}</div>`;
+            statusEl.innerHTML = `<div class="fs-6 fw-bold text-muted">Ждём: ${data.current_player_name || '…'}</div>`;
             btn.classList.add('d-none');
         }
     } catch (e) {
@@ -693,17 +613,26 @@ async function refreshState() {
     }
 }
 
+function updateMiniCards(data) {
+    data.players.forEach(p => {
+        const card = document.querySelector(`#players-list [data-player-id="${p.id}"]`);
+        if (!card) return;
+        const posEl = card.querySelector('.pos-value');
+        if (posEl) posEl.textContent = p.position;
+        const mini = card.querySelector('.player-mini');
+        if (mini) mini.classList.toggle('current', p.id === data.current_player_id);
+    });
+}
+
 btn.addEventListener('click', async function () {
-    if (rolling || animating || spinning) return;
+    if (rolling || spinning || mnoAnimating) return;
     rolling = true;
     this.disabled = true;
 
     try {
-        const fd = new FormData();
         const r = await fetch("{% url 'games:monopoly_roll' monopoly.id %}", {
             method: 'POST',
             headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-            body: fd,
         });
         const data = await r.json();
 
@@ -726,6 +655,8 @@ btn.addEventListener('click', async function () {
         const modifierType = data.modifier_type;
         const modifier = data.modifier;
 
+        mnoLastPositions[MY_ID] = finalPos;
+
         if (modifierType === 'boost' || modifierType === 'trap' || modifierType === 'shield') {
             const diceBox = document.getElementById('dice-result');
             const diceVal = document.getElementById('dice-value');
@@ -744,11 +675,11 @@ btn.addEventListener('click', async function () {
             diceVal.style.animation = 'diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
             diceEv.textContent = '';
 
-            await sleep(900);
-
+            await mnoSleep(700);
             const isTrap = (modifierType === 'trap');
             const isShield = (modifierType === 'shield');
-            await animateMovement(from, posAfterDice, false);
+
+            await mnoAnimatePlayer(MY_ID, from, posAfterDice);
 
             const modCellEl = document.querySelector(`.track-cell[data-index="${posAfterDice}"]`);
             if (modCellEl) {
@@ -756,21 +687,21 @@ btn.addEventListener('click', async function () {
                 setTimeout(() => modCellEl.classList.remove('modifier-hit', 'modifier-hit-trap'), 900);
             }
 
-            await sleep(500);
+            await mnoSleep(400);
 
             if (isShield) {
                 diceEv.textContent = '🛡 Щит спас от ловушки!';
-                diceEv.className = 'mt-3 fw-bold text-info';
-                await sleep(1500);
+                diceEv.className = 'mt-1 fw-bold small text-info';
+                await mnoSleep(1300);
                 diceBox.classList.add('d-none');
             } else {
                 modVal.textContent = (modifier > 0 ? '+' : '') + modifier;
                 modCell.classList.add(isTrap ? 'trap' : 'boost');
                 modCell.classList.remove('d-none');
-                await sleep(900);
+                await mnoSleep(700);
 
                 eqCell.classList.remove('d-none');
-                await sleep(400);
+                await mnoSleep(300);
 
                 const totalSteps = data.dice + modifier;
                 totalVal.textContent = totalSteps;
@@ -779,19 +710,19 @@ btn.addEventListener('click', async function () {
                 totalCell.classList.add('pulse');
 
                 diceEv.textContent = data.cell_label;
-                diceEv.className = 'mt-3 fw-bold ' + (modifier > 0 ? 'text-success' : 'text-danger');
+                diceEv.className = 'mt-1 fw-bold small ' + (modifier > 0 ? 'text-success' : 'text-danger');
 
-                await sleep(700);
+                await mnoSleep(550);
                 modCell.classList.add('merge');
                 document.querySelector('.result-main').classList.add('shrink');
                 eqCell.classList.add('d-none');
-                await sleep(1000);
+                await mnoSleep(850);
                 diceBox.classList.add('d-none');
             }
 
-            await sleep(300);
+            await mnoSleep(220);
             if (finalPos !== posAfterDice) {
-                await animateMovement(posAfterDice, finalPos, true);
+                await mnoAnimatePlayer(MY_ID, posAfterDice, finalPos);
             }
         } else {
             const diceBox = document.getElementById('dice-result');
@@ -805,19 +736,18 @@ btn.addEventListener('click', async function () {
             void diceVal.offsetWidth;
             diceVal.style.animation = 'diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
             diceEv.textContent = data.cell_label;
-            diceEv.className = 'mt-3 fw-bold text-primary';
+            diceEv.className = 'mt-1 fw-bold small text-primary';
 
-            await sleep(1300);
+            await mnoSleep(1100);
             diceBox.classList.add('d-none');
-            await animateMovement(from, finalPos);
+            await mnoAnimatePlayer(MY_ID, from, finalPos);
         }
 
-        // убираем бейдж карты, если использована
         if (data.applied_card) {
             showMessage('🎴 Ты применил карту!', 'success');
         }
 
-        lastPositions[MY_ID] = finalPos;
+        mnoLastPositions[MY_ID] = finalPos;
         rolling = false;
         await refreshState();
         setTimeout(() => { this.disabled = false; }, 300);
@@ -829,14 +759,9 @@ btn.addEventListener('click', async function () {
     }
 });
 
-function showMessage(text, type = 'danger') {
-    const el = document.getElementById('message');
-    el.className = `alert alert-${type} mt-3 mb-0`;
-    el.textContent = text;
-    setTimeout(() => { el.className = 'alert mt-3 mb-0 d-none'; }, 4000);
-}
-
 refreshState();
-setInterval(() => { if (!animating && !spinning && !rolling) refreshState(); }, 2000);
+setInterval(() => {
+    if (!mnoAnimating && !spinning && !rolling) refreshState();
+}, 2000);
 </script>
 {% endblock %}

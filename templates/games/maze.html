@@ -3,9 +3,9 @@
 {% block title %}Лабиринт — {{ game.title }}{% endblock %}
 
 {% block content %}
-<div class="container py-3 py-md-4">
+<div class="maze-page">
 
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 maze-card" style="padding: 14px 20px;">
         <h1 class="h4 fw-bold mb-0">🌀 Лабиринт</h1>
         <div class="d-flex gap-2 flex-wrap">
             <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2">
@@ -17,19 +17,19 @@
         </div>
     </div>
 
-    <div class="alert alert-primary border-0 rounded-4 py-2 mb-3 d-flex align-items-center gap-2">
+    <div class="alert alert-primary border-0 rounded-4 py-2 mb-3 d-flex align-items-center gap-2 maze-card" style="padding: 12px 18px;">
         <span style="font-size: 20px;">🎲</span>
         <small class="mb-0">
             Твой лабиринт: <strong>{{ maze_json|length }}×{{ maze_json|length }}</strong>.
-            Чем больше баллов — тем больше лабиринт!
+            Осторожно — на пути есть капканы 🪤!
         </small>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-2 p-md-3 mb-3">
+    <div class="maze-card">
         <div id="maze" class="maze-grid"></div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+    <div class="controls-card">
         <h5 class="fw-bold mb-3 text-center">
             <i class="bi bi-joystick text-primary"></i> Управление
         </h5>
@@ -87,244 +87,215 @@
             </p>
         </div>
 
+        <div id="trap" class="trap-hidden mt-3">
+            <div class="trap-box">
+                <div class="trap-icon">🪤</div>
+                <div class="trap-text">
+                    <strong>Ты попал в капкан!</strong>
+                    <div class="trap-timer">
+                        Освободишься через <span id="trap-num">10</span> сек
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="message" class="alert mt-3 mb-0 d-none"></div>
     </div>
 
-    <div class="text-center text-muted small mb-4">
-        🧑 — ты · 🏁 — выход · тёмные клетки — стены
+    <div class="text-center text-muted small mb-4 mt-3">
+        🧑 — ты · 🏁 — выход · 🪤 — капкан · 🟩 — пройдено
     </div>
 
 </div>
 
 <style>
+.maze-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 40px; }
+.maze-card {
+    background: #ffffff; border-radius: 28px; padding: 18px;
+    box-shadow: 0 20px 60px -20px rgba(99, 102, 241, 0.22), 0 0 0 1px rgba(99, 102, 241, 0.06);
+    max-width: 640px; margin: 0 auto;
+}
 .maze-grid {
-    display: grid;
-    grid-template-columns: repeat({{ maze_json.0|length }}, 1fr);
-    gap: 3px;
-    aspect-ratio: 1;
-    width: 100%;
-    max-width: 500px;
-    margin: 0 auto;
-    position: relative;
+    display: grid; grid-template-columns: repeat({{ maze_json.0|length }}, 1fr);
+    gap: 4px; aspect-ratio: 1; width: 100%; margin: 0 auto;
 }
 .maze-cell {
-    background: #e5e9f2;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(10px, 2.5vw, 20px);
-    aspect-ratio: 1;
-    transition: background 0.2s;
-    position: relative;
+    aspect-ratio: 1; background-size: 100% 100%; background-repeat: no-repeat;
+    background-position: center; display: flex; align-items: center; justify-content: center;
+    transition: background-color 0.3s, transform 0.15s; position: relative;
+    border-radius: 6px;
 }
-.maze-cell.wall   { background: #1e1b4b; }
-.maze-cell.path   { background: #f0f4ff; }
-.maze-cell.start  { background: #bbf7d0; }
-.maze-cell.goal   { background: #fde68a; }
-.maze-cell.player {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    transform: scale(1.15);
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
-    z-index: 2;
-}
+.maze-cell.wall  { background-image: url('{% static "img/maze/wall.png" %}'); }
+.maze-cell.path  { background-image: url('{% static "img/maze/path.png" %}'); }
+.maze-cell.start { background-image: url('{% static "img/maze/start.png" %}'); }
+.maze-cell.goal  { background-image: url('{% static "img/maze/goal.png" %}'); }
 
 /* ============================================================
-   АНИМАЦИЯ ПЕРЕМЕЩЕНИЯ ИГРОКА
+   КАПКАН — КРАСНЫЙ КВАДРАТ + SVG-ИКОНКА КАПКАНА
    ============================================================ */
-/* сам игрок — плавно выезжает из предыдущей клетки */
+.maze-cell.trap {
+    background-image: none !important;
+    background-color: #dc2626 !important;
+    box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,0.35),
+        0 0 10px rgba(220,38,38,0.8);
+    z-index: 1;
+    animation: trapGlow 1.5s ease-in-out infinite;
+    overflow: hidden;
+}
+.maze-cell.trap::before {
+    content: '';
+    position: absolute;
+    inset: 8%;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g><line x1='30' y1='4' x2='24' y2='16' stroke='%23fbbf24' stroke-width='5' stroke-linecap='round'/><line x1='70' y1='4' x2='76' y2='16' stroke='%23fbbf24' stroke-width='5' stroke-linecap='round'/><line x1='50' y1='2' x2='50' y2='14' stroke='%23fbbf24' stroke-width='5' stroke-linecap='round'/><circle cx='50' cy='62' r='34' fill='none' stroke='%236b7fc4' stroke-width='6'/><path d='M 22 48 L 30 30 L 38 48 L 46 30 L 54 48 L 62 30 L 70 48 L 78 30 L 78 48 Z' fill='%23e11d48' stroke='%236b7fc4' stroke-width='3' stroke-linejoin='round'/><rect x='22' y='48' width='56' height='14' rx='2' fill='%238b9bd4' stroke='%236b7fc4' stroke-width='2'/><rect x='22' y='62' width='56' height='14' rx='2' fill='%236b7fc4'/><circle cx='50' cy='55' r='6' fill='%23fbbf24' stroke='%23d97706' stroke-width='2'/><path d='M 22 76 L 50 88 L 78 76 L 78 84 L 50 96 L 22 84 Z' fill='%238b9bd4' stroke='%236b7fc4' stroke-width='2' stroke-linejoin='round'/><line x1='50' y1='88' x2='50' y2='98' stroke='%236b7fc4' stroke-width='3'/></g></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+    pointer-events: none;
+    z-index: 2;
+}
+@keyframes trapGlow {
+    0%, 100% { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35), 0 0 10px rgba(220,38,38,0.8); }
+    50%      { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.55), 0 0 18px rgba(220,38,38,1); }
+}
+
+.maze-cell.visited {
+    background-image: url('{% static "img/maze/path.png" %}');
+    background-color: #86efac; background-blend-mode: multiply;
+    transition: background-color 0.4s;
+}
 .maze-cell.player {
-    animation: playerAppear 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background-image: url('{% static "img/maze/player.png" %}');
+    z-index: 3; animation: playerPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-@keyframes playerAppear {
-    0% {
-        transform: scale(0.4) rotate(-15deg);
-        filter: brightness(1.5);
-        box-shadow: 0 0 0 8px rgba(99,102,241,0.6);
-    }
-    60% {
-        transform: scale(1.25) rotate(5deg);
-        box-shadow: 0 0 0 4px rgba(99,102,241,0.4);
-    }
-    100% {
-        transform: scale(1.15) rotate(0);
-        box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
-    }
+.maze-cell.player.on-trap { animation: shake 0.4s ease-in-out infinite; z-index: 4; }
+@keyframes shake {
+    0%, 100% { transform: translateX(0) scale(1.05); }
+    25% { transform: translateX(-4px) scale(1.05); }
+    75% { transform: translateX(4px) scale(1.05); }
 }
+@keyframes playerPop {
+    0% { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+    60% { transform: scale(1.18) rotate(5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.maze-cell.stepping { transform: scale(1.12); z-index: 3; filter: drop-shadow(0 0 8px rgba(251,191,36,0.9)); }
+.maze-cell.arrived { animation: arrivedPulse 0.6s ease-out; }
+@keyframes arrivedPulse { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.maze-cell.teleport-out::after {
+    content: ''; position: absolute; inset: 15%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(251,191,36,0.9), rgba(251,191,36,0));
+    animation: teleportOut 0.5s ease-out forwards;
+}
+@keyframes teleportOut { 0% { opacity: 1; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.8); } }
+.maze-cell.teleport-in { animation: teleportIn 0.6s ease-out; }
+@keyframes teleportIn { 0% { transform: scale(0.4); filter: brightness(2); } 100% { transform: scale(1); filter: brightness(1); } }
 
-/* след, который остаётся за игроком */
-.maze-cell.trail {
-    background: linear-gradient(135deg, #c7d2fe, #ddd6fe);
-    animation: trailFade 1.2s ease-out;
+.controls-card {
+    background: #ffffff; border-radius: 24px; padding: 24px;
+    margin: 24px auto 0; max-width: 500px;
+    box-shadow: 0 12px 32px -12px rgba(99, 102, 241, 0.2);
 }
-@keyframes trailFade {
-    0%   { background: #a5b4fc; }
-    100% { background: #f0f4ff; }
-}
-
-/* пульсация старой клетки — «я тут был» */
-.maze-cell.left {
-    animation: cellLeave 0.4s ease-out;
-}
-@keyframes cellLeave {
-    0%   { background: #a5b4fc; }
-    100% { background: #f0f4ff; }
-}
-
-/* телепорт — вспышка на старой и новой клетке */
-.maze-cell.teleport-out {
-    animation: teleportOut 0.5s ease-out;
-}
-@keyframes teleportOut {
-    0%   { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
-    50%  { background: #fbbf24; box-shadow: 0 0 0 20px rgba(245,158,11,0); }
-    100% { background: #f0f4ff; }
-}
-.maze-cell.teleport-in {
-    animation: teleportIn 0.6s ease-out;
-}
-@keyframes teleportIn {
-    0% {
-        background: #fbbf24;
-        box-shadow: 0 0 0 20px rgba(245,158,11,0.6);
-        transform: scale(0.5);
-    }
-    100% {
-        background: transparent;
-        box-shadow: 0 0 0 2px rgba(99,102,241,0.35);
-        transform: scale(1.15);
-    }
-}
-
-/* шаги «тук-тук» для длинного шага */
-.maze-cell.footstep {
-    animation: footstep 0.25s ease-out;
-}
-@keyframes footstep {
-    0%   { background: #c7d2fe; transform: scale(0.95); }
-    100% { background: #f0f4ff; transform: scale(1); }
-}
-
-.action-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-}
+.action-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .action-btn {
-    background: white;
-    border: 2px solid #e5e7f5;
-    border-radius: 14px;
-    padding: 10px 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-    font-weight: 600;
-    color: #4b5563;
+    background: #ffffff; border: 2px solid #e5e7f5; border-radius: 14px;
+    padding: 10px 4px; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; cursor: pointer; transition: all 0.15s;
+    font-family: inherit; font-weight: 700; color: #4b5563;
 }
-.action-btn:hover { border-color: #6366f1; color: #6366f1; }
+.action-btn:hover { border-color: #8b5cf6; color: #8b5cf6; }
 .action-btn.active {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border-color: #6366f1;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px -4px rgba(99,102,241,0.5);
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    border-color: #6366f1; color: white; transform: translateY(-2px);
+    box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.5);
 }
-.action-btn-warning.active {
-    background: linear-gradient(135deg, #f59e0b, #f97316);
-    border-color: #f59e0b;
-    box-shadow: 0 6px 16px -4px rgba(245,158,11,0.5);
-}
-.action-btn.queued {
-    outline: 3px dashed #6366f1;
-    outline-offset: 2px;
-    animation: queueGlow 1s ease-in-out infinite;
-}
-@keyframes queueGlow {
-    0%, 100% { outline-color: #6366f1; }
-    50%      { outline-color: #a78bfa; }
-}
-.action-emoji { font-size: 24px; line-height: 1; }
-.action-label { font-size: 12px; font-weight: 700; }
+.action-btn-warning.active { background: linear-gradient(135deg, #f59e0b, #f97316); border-color: #f59e0b; }
+.action-btn.queued { outline: 3px dashed #8b5cf6; outline-offset: 2px; animation: queueGlow 1s ease-in-out infinite; }
+@keyframes queueGlow { 0%, 100% { outline-color: #8b5cf6; } 50% { outline-color: #c4b5fd; } }
+.action-emoji { font-size: 22px; line-height: 1; }
+.action-label { font-size: 11px; font-weight: 800; }
 .action-cost  { font-size: 10px; opacity: 0.7; }
 
 .d-pad {
-    display: grid;
-    grid-template-columns: repeat(3, 68px);
-    grid-template-rows: repeat(3, 68px);
-    gap: 8px;
-    justify-content: center;
-    margin: 0 auto;
-    transition: opacity 0.2s;
+    display: grid; grid-template-columns: repeat(3, 64px);
+    grid-template-rows: repeat(3, 64px); gap: 8px;
+    justify-content: center; margin: 0 auto; transition: opacity 0.2s;
 }
 .d-pad.disabled { opacity: 0.35; pointer-events: none; }
 .d-pad-btn {
-    background: white;
-    border: 2px solid #e5e7f5;
-    border-radius: 16px;
-    font-size: 26px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.15s;
-    color: #4b5563;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #ffffff; border: 2px solid #e5e7f5; border-radius: 16px;
+    font-size: 24px; font-weight: bold; cursor: pointer;
+    transition: all 0.15s; color: #4b5563;
+    display: flex; align-items: center; justify-content: center;
 }
-.d-pad-btn:hover { background: #6366f1; color: white; border-color: #6366f1; }
+.d-pad-btn:hover { background: #8b5cf6; color: white; border-color: #8b5cf6; }
 .d-pad-btn:active { transform: scale(0.92); }
 .d-pad-up    { grid-area: 1 / 2; }
 .d-pad-left  { grid-area: 2 / 1; }
-.d-pad-center{ grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.d-pad-center{ grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-size: 26px; }
 .d-pad-right { grid-area: 2 / 3; }
 .d-pad-down  { grid-area: 3 / 2; }
 
 .cooldown-hidden { display: none; }
-.cooldown-bar-wrap {
-    height: 8px;
-    background: #e5e7f5;
-    border-radius: 999px;
-    overflow: hidden;
-}
+.cooldown-bar-wrap { height: 8px; background: #e5e7f5; border-radius: 999px; overflow: hidden; }
 .cooldown-bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6);
-    border-radius: 999px;
-    transition: width 0.1s linear;
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #8b5cf6, #6366f1);
+    border-radius: 999px; transition: width 0.1s linear;
 }
 
-@media (max-width: 480px) {
-    .action-label { font-size: 11px; }
+.trap-hidden { display: none; }
+.trap-box {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border: 2px solid #fca5a5; border-radius: 18px;
+    animation: trapPulse 1s ease-in-out infinite;
+}
+@keyframes trapPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+    50% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+}
+.trap-icon { font-size: 40px; line-height: 1; }
+.trap-text { flex: 1; color: #7f1d1d; }
+.trap-text strong { font-size: 16px; display: block; margin-bottom: 2px; }
+.trap-timer { font-size: 14px; color: #991b1b; }
+.trap-timer span { font-weight: 800; font-size: 18px; }
+
+@media (max-width: 576px) {
+    .maze-page { padding: 12px 8px 30px; }
+    .maze-card { padding: 12px; border-radius: 20px; }
+    .maze-grid { gap: 3px; }
+    .controls-card { padding: 16px; border-radius: 18px; }
+    .d-pad { grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); }
+    .action-label { font-size: 10px; }
     .action-cost  { font-size: 9px; }
-    .action-emoji { font-size: 20px; }
-    .d-pad {
-        grid-template-columns: repeat(3, 60px);
-        grid-template-rows: repeat(3, 60px);
-    }
-    .d-pad-btn { font-size: 22px; }
+    .action-emoji { font-size: 18px; }
 }
 </style>
 
 <script>
 const MAZE = {{ maze_json|safe }};
 let playerPos = {
-    row: {{ session.position.row|default:1 }},
-    col: {{ session.position.col|default:1 }}
+    row: {{ session.position.row|default_if_none:1 }},
+    col: {{ session.position.col|default_if_none:1 }}
 };
 let selectedAction = 'step';
 let cooldownActive = false;
 let cooldownInterval = null;
 let queuedAction = null;
-let animating = false;   // блокировка, пока идёт анимация
+let animating = false;
+
+let trapActive = false;
+let trapInterval = null;
+
+const visitedCells = new Set();
 
 const COOLDOWN_SECONDS = 3;
-const STEP_MS = 140;      // сколько миллисекунд длится один блок
-const TELEPORT_MS = 600;  // сколько длится телепорт
+const STEP_MS = 140;
+const TELEPORT_MS = 600;
+const TRAP_SECONDS = 10;
 
 const mazeEl = document.getElementById('maze');
 const msgEl = document.getElementById('message');
@@ -332,10 +303,11 @@ const dpad = document.getElementById('dpad');
 const cooldownBox = document.getElementById('cooldown');
 const cooldownBar = document.getElementById('cooldown-bar');
 const cooldownNum = document.getElementById('cooldown-num');
+const trapBox = document.getElementById('trap');
+const trapNum = document.getElementById('trap-num');
 
-/* ============================================================
-   RENDER — базовый рендер без анимации
-   ============================================================ */
+function cellKey(r, c) { return r + ':' + c; }
+
 function renderMaze(playerOverride) {
     const pos = playerOverride || playerPos;
     mazeEl.innerHTML = '';
@@ -350,13 +322,16 @@ function renderMaze(playerOverride) {
             if (v === 0) cell.classList.add('wall');
             else if (v === 2) cell.classList.add('start');
             else if (v === 3) cell.classList.add('goal');
+            else if (v === 4) cell.classList.add('trap');
             else cell.classList.add('path');
+
+            if (visitedCells.has(cellKey(r, c)) && v !== 0 && v !== 4) {
+                cell.classList.add('visited');
+            }
 
             if (r === pos.row && c === pos.col) {
                 cell.classList.add('player');
-                cell.textContent = '🧑';
-            } else if (v === 3) {
-                cell.textContent = '🏁';
+                if (trapActive) cell.classList.add('on-trap');
             }
 
             mazeEl.appendChild(cell);
@@ -364,120 +339,91 @@ function renderMaze(playerOverride) {
     }
 }
 
-/* ============================================================
-   ПОЛУЧИТЬ КЛЕТКУ ПО КООРДИНАТАМ
-   ============================================================ */
 function getCell(row, col) {
     return mazeEl.querySelector(`.maze-cell[data-row="${row}"][data-col="${col}"]`);
 }
 
-/* ============================================================
-   УБРАТЬ ИГРОКА С КЛЕТКИ (плавно)
-   ============================================================ */
-function clearPlayer(row, col, leaveTrail = true) {
+function clearPlayer(row, col, markVisited = true) {
     const cell = getCell(row, col);
     if (!cell) return;
-    cell.classList.remove('player');
-    cell.textContent = '';
-    if (leaveTrail) {
-        cell.classList.add('trail');
-        setTimeout(() => cell.classList.remove('trail'), 1200);
+    cell.classList.remove('player', 'on-trap');
+    if (markVisited && MAZE[row][col] !== 4) {
+        visitedCells.add(cellKey(row, col));
+        cell.classList.add('visited');
     }
 }
 
-/* ============================================================
-   ПОСТАВИТЬ ИГРОКА НА КЛЕТКУ (с анимацией)
-   ============================================================ */
 function placePlayer(row, col, animate = true) {
     const cell = getCell(row, col);
     if (!cell) return;
     cell.classList.add('player');
-    cell.textContent = '🧑';
-    if (!animate) {
-        cell.style.animation = 'none';
-    }
+    if (trapActive) cell.classList.add('on-trap');
+    if (!animate) cell.style.animation = 'none';
 }
 
-/* ============================================================
-   АНИМАЦИЯ ДВИЖЕНИЯ ПО ПУТИ
-   path — массив [{row, col}, ...] включая стартовую позицию
-   ============================================================ */
 async function animatePath(path, isTeleport = false) {
     if (path.length < 2) return;
     animating = true;
 
     if (isTeleport) {
-        // особый случай — вспышка на старой, вспышка на новой
         const from = path[0];
         const to = path[path.length - 1];
-
         const fromCell = getCell(from.row, from.col);
         if (fromCell) fromCell.classList.add('teleport-out');
-
         await sleep(300);
-
-        clearPlayer(from.row, from.col, false);
+        clearPlayer(from.row, from.col, true);
         if (fromCell) fromCell.classList.remove('teleport-out');
-
         const toCell = getCell(to.row, to.col);
         if (toCell) toCell.classList.add('teleport-in');
-
         placePlayer(to.row, to.col, true);
-
         await sleep(TELEPORT_MS);
         if (toCell) toCell.classList.remove('teleport-in');
-
+        visitedCells.add(cellKey(to.row, to.col));
         animating = false;
         return;
     }
 
-    // обычное движение — по одному блоку
     for (let i = 1; i < path.length; i++) {
         const prev = path[i - 1];
         const curr = path[i];
-
+        const currCell = getCell(curr.row, curr.col);
+        if (currCell) currCell.classList.add('stepping');
+        await sleep(60);
+        if (currCell) currCell.classList.remove('stepping');
         clearPlayer(prev.row, prev.col, true);
         placePlayer(curr.row, curr.col, true);
-
         await sleep(STEP_MS);
     }
 
+    const finalCell = getCell(path[path.length - 1].row, path[path.length - 1].col);
+    if (finalCell) {
+        finalCell.classList.add('arrived');
+        setTimeout(() => finalCell.classList.remove('arrived'), 600);
+    }
     animating = false;
 }
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-/* ============================================================
-   СООБЩЕНИЕ
-   ============================================================ */
 function showMessage(text, type = 'danger') {
     msgEl.className = `alert alert-${type} mt-3 mb-0`;
     msgEl.textContent = text;
     setTimeout(() => { msgEl.className = 'alert mt-3 mb-0 d-none'; }, 2500);
 }
 
-/* ============================================================
-   COOLDOWN
-   ============================================================ */
 function startCooldown(seconds = COOLDOWN_SECONDS) {
     cooldownActive = true;
     dpad.classList.add('disabled');
     cooldownBox.classList.remove('cooldown-hidden');
-
     const startTime = Date.now();
     const totalMs = seconds * 1000;
     if (cooldownInterval) clearInterval(cooldownInterval);
-
     cooldownInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, totalMs - elapsed);
         const percent = 100 - (remaining / totalMs) * 100;
-
         cooldownBar.style.width = percent + '%';
         cooldownNum.textContent = Math.ceil(remaining / 1000);
-
         if (remaining <= 0) {
             clearInterval(cooldownInterval);
             cooldownInterval = null;
@@ -485,7 +431,6 @@ function startCooldown(seconds = COOLDOWN_SECONDS) {
             dpad.classList.remove('disabled');
             cooldownBox.classList.add('cooldown-hidden');
             cooldownBar.style.width = '0%';
-
             if (queuedAction) {
                 setActiveAction(queuedAction);
                 queuedAction = null;
@@ -494,18 +439,44 @@ function startCooldown(seconds = COOLDOWN_SECONDS) {
     }, 50);
 }
 
+function startTrap(seconds = TRAP_SECONDS) {
+    trapActive = true;
+    dpad.classList.add('disabled');
+    trapBox.classList.remove('trap-hidden');
+    trapNum.textContent = seconds;
+    const cell = getCell(playerPos.row, playerPos.col);
+    if (cell) cell.classList.add('on-trap');
+    const startTime = Date.now();
+    const totalMs = seconds * 1000;
+    if (trapInterval) clearInterval(trapInterval);
+    trapInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, totalMs - elapsed);
+        trapNum.textContent = Math.ceil(remaining / 1000);
+        if (remaining <= 0) {
+            clearInterval(trapInterval);
+            trapInterval = null;
+            trapActive = false;
+            dpad.classList.remove('disabled');
+            trapBox.classList.add('trap-hidden');
+            const c = getCell(playerPos.row, playerPos.col);
+            if (c) c.classList.remove('on-trap');
+            showMessage('✅ Ты освободился из капкана!', 'success');
+        }
+    }, 100);
+}
+
 function setActiveAction(action) {
     selectedAction = action;
     document.querySelectorAll('.action-btn').forEach(b => {
         b.classList.remove('active', 'queued');
-        if (b.dataset.action === action) {
-            b.classList.add('active');
-        }
+        if (b.dataset.action === action) b.classList.add('active');
     });
 }
 
 document.querySelectorAll('.action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+        if (trapActive) return;
         const action = btn.dataset.action;
         if (cooldownActive) {
             queuedAction = action;
@@ -520,17 +491,13 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 
 document.querySelectorAll('[data-dir]').forEach(btn => {
     btn.addEventListener('click', () => {
-        if (cooldownActive || animating) return;
+        if (cooldownActive || animating || trapActive) return;
         sendMove(btn.dataset.dir);
     });
 });
 
-/* ============================================================
-   ОТПРАВКА ХОДА
-   ============================================================ */
 function sendMove(direction) {
     const startPos = { ...playerPos };
-
     const fd = new FormData();
     fd.append('action', selectedAction);
     fd.append('direction', direction || '');
@@ -553,9 +520,10 @@ function sendMove(direction) {
         if (data.error) {
             const msgs = {
                 'not_enough_points': 'Не хватает баллов! 😢',
-                'wall': 'Там стена 🧱',
                 'blocked': 'Путь закрыт 🧱',
                 'cooldown': 'Подожди немного…',
+                'no_free_cells': 'Нет свободных клеток для телепорта',
+                'already_finished': 'Ты уже на финише!',
             };
             showMessage(msgs[data.error] || 'Ошибка хода');
             return;
@@ -563,32 +531,29 @@ function sendMove(direction) {
 
         const endPos = data.position;
         const wasTeleport = selectedAction === 'teleport';
-
-        // СТРОИМ ПУТЬ от startPos до endPos
-        let path = [];
-        if (wasTeleport) {
-            path = [startPos, endPos];
-        } else {
-            path = buildPath(startPos, endPos);
-        }
-
-        // ЗАПУСКАЕМ АНИМАЦИЮ
+        let path = wasTeleport ? [startPos, endPos] : buildPath(startPos, endPos);
         await animatePath(path, wasTeleport);
 
-        // ОБНОВЛЯЕМ СОСТОЯНИЕ
         playerPos = endPos;
         document.getElementById('remaining').textContent = data.remaining;
         document.getElementById('spent').textContent = data.spent_points;
 
-        // ФИНАЛЬНЫЙ РЕНДЕР (на случай если что-то поехало)
+        if (data.trap_triggered && MAZE[endPos.row][endPos.col] === 4) {
+            MAZE[endPos.row][endPos.col] = 1;
+        }
+
         renderMaze();
 
-        if (wasTeleport) {
-            showMessage('✨ Телепорт! Ты оказался в случайном месте', 'info');
+        if (wasTeleport) showMessage('✨ Телепорт!', 'info');
+
+        if (data.trap_triggered) {
+            showMessage('🪤 Ты попал в капкан!', 'danger');
+            startTrap(data.trap_duration || TRAP_SECONDS);
+            return;
         }
 
         if (data.is_finished) {
-            showMessage('🎉 Ты дошёл до выхода! Молодец!', 'success');
+            showMessage('🎉 Ты дошёл до выхода!', 'success');
             setTimeout(() => {
                 window.location.href = "{% url 'games:results' game.id %}";
             }, 1500);
@@ -604,33 +569,21 @@ function sendMove(direction) {
     });
 }
 
-/* ============================================================
-   ПОСТРОИТЬ ПУТЬ между двумя клетками
-   (идём по одной клетке по прямой — вверх/вниз/влево/вправо)
-   ============================================================ */
 function buildPath(from, to) {
     const path = [{ row: from.row, col: from.col }];
-
     let r = from.row;
     let c = from.col;
-
-    // сначала по строке
     while (r !== to.row) {
         r += r < to.row ? 1 : -1;
         path.push({ row: r, col: c });
     }
-    // потом по столбцу
     while (c !== to.col) {
         c += c < to.col ? 1 : -1;
         path.push({ row: r, col: c });
     }
-
     return path;
 }
 
-/* ============================================================
-   СТАРТ
-   ============================================================ */
 renderMaze();
 </script>
 {% endblock %}

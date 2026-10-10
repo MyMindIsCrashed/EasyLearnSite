@@ -1,0 +1,190 @@
+{% comment %}
+Общая логика анимации карты Монополии.
+Параметры:
+  - my_id : id текущего MonopolyPlayer (необязательно)
+  - map   : список клеток MONOPOLY_MAP
+{% endcomment %}
+
+<script>
+{% if my_id %}
+const MNO_MY_ID = {{ my_id }};
+{% else %}
+const MNO_MY_ID = null;
+{% endif %}
+
+const MNO_MAP = {{ map|safe }};
+const MNO_COLS = 6;
+const MNO_ROWS = 6;
+
+function mnoSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function mnoGetCellPosition(index) {
+    const path = [];
+    for (let c = 0; c < MNO_COLS; c++) path.push({ row: 0, col: c });
+    for (let r = 1; r < MNO_ROWS; r++) path.push({ row: r, col: MNO_COLS - 1 });
+    for (let c = MNO_COLS - 2; c >= 0; c--) path.push({ row: MNO_ROWS - 1, col: c });
+    for (let r = MNO_ROWS - 2; r >= 1; r--) path.push({ row: r, col: 0 });
+    return path[index] || { row: 0, col: 0 };
+}
+
+function mnoGetCellStyle(index) {
+    const pos = mnoGetCellPosition(index);
+    const GAP = 6;
+    const cellW = `calc((100% - ${GAP * (MNO_COLS - 1)}px) / ${MNO_COLS})`;
+    const cellH = `calc((100% - ${GAP * (MNO_ROWS - 1)}px) / ${MNO_ROWS})`;
+    return {
+        left: `calc(${pos.col} * (${cellW} + ${GAP}px))`,
+        top:  `calc(${pos.row} * (${cellH} + ${GAP}px))`,
+        width: cellW,
+        height: cellH,
+    };
+}
+
+function mnoMakeChipHtml(p) {
+    if (p.avatar) return `<img src="${p.avatar}" alt="">`;
+    return p.emoji || '🧑';
+}
+
+const mnoLastPositions = {};
+let mnoPlayersCache = [];
+let mnoAnimating = false;
+
+function mnoRenderMapBase(trackEl, players) {
+    trackEl.innerHTML = '';
+    const me = players.find(p => p.id === MNO_MY_ID);
+
+    for (let i = 0; i < MNO_MAP.length; i++) {
+        const cell = MNO_MAP[i];
+        const cellEl = document.createElement('div');
+        cellEl.className = `track-cell track-${cell.type}`;
+        cellEl.dataset.index = i;
+
+        const style = mnoGetCellStyle(i);
+        cellEl.style.left = style.left;
+        cellEl.style.top = style.top;
+        cellEl.style.width = style.width;
+        cellEl.style.height = style.height;
+
+        if (me && me.position === i) cellEl.classList.add('me-here');
+
+        const num = document.createElement('div');
+        num.className = 'track-cell-num';
+        num.textContent = i;
+        cellEl.appendChild(num);
+
+        const icon = document.createElement('div');
+        icon.className = 'track-cell-icon';
+        icon.textContent = cell.icon;
+        cellEl.appendChild(icon);
+
+        const label = document.createElement('div');
+        label.className = 'track-cell-label';
+        label.textContent = cell.label;
+        cellEl.appendChild(label);
+
+        const playersBox = document.createElement('div');
+        playersBox.className = 'track-cell-players';
+        cellEl.appendChild(playersBox);
+
+        trackEl.appendChild(cellEl);
+    }
+}
+
+function mnoGetChip(playerId) {
+    return document.querySelector(`.track-cell-player[data-player-id="${playerId}"]`);
+}
+
+function mnoMoveChipTo(playerId, cellIndex, jump = true) {
+    const targetCell = document.querySelector(`.track-cell[data-index="${cellIndex}"]`);
+    if (!targetCell) return null;
+
+    const playersBox = targetCell.querySelector('.track-cell-players');
+    const existing = mnoGetChip(playerId);
+
+    let chipHtml;
+    if (existing) {
+        chipHtml = existing.innerHTML;
+    } else {
+        const p = mnoPlayersCache.find(x => x.id === playerId);
+        chipHtml = p ? mnoMakeChipHtml(p) : '🧑';
+    }
+
+    if (existing && existing.parentElement === playersBox) return existing;
+    if (existing) existing.remove();
+
+    const chip = document.createElement('div');
+    chip.className = 'track-cell-player' + (playerId === MNO_MY_ID ? ' is-me' : '');
+    chip.dataset.playerId = playerId;
+    const p = mnoPlayersCache.find(x => x.id === playerId);
+    chip.title = p ? p.name : '';
+    chip.innerHTML = chipHtml;
+    playersBox.appendChild(chip);
+
+    if (jump) {
+        chip.classList.add('jumping');
+        setTimeout(() => chip.classList.remove('jumping'), 400);
+    }
+
+    if (playerId === MNO_MY_ID) {
+        document.querySelectorAll('.track-cell.me-here').forEach(el => el.classList.remove('me-here'));
+        targetCell.classList.add('me-here');
+    }
+
+    return chip;
+}
+
+async function mnoAnimatePlayer(playerId, from, to) {
+    if (from === to) return;
+
+    const step = from < to ? 1 : -1;
+    for (let i = from + step; step > 0 ? i <= to : i >= to; i += step) {
+        const cellEl = document.querySelector(`.track-cell[data-index="${i}"]`);
+        if (cellEl) {
+            cellEl.classList.add('stepping');
+            mnoMoveChipTo(playerId, i, true);
+            await mnoSleep(280);
+            cellEl.classList.remove('stepping');
+        }
+    }
+
+    const finalCell = document.querySelector(`.track-cell[data-index="${to}"]`);
+    if (finalCell) {
+        finalCell.classList.add('arrived');
+        setTimeout(() => finalCell.classList.remove('arrived'), 1200);
+    }
+
+    await mnoSleep(240);
+}
+
+async function mnoAnimateAll(players) {
+    const tasks = [];
+
+    players.forEach(p => {
+        const prev = mnoLastPositions[p.id];
+        if (prev !== undefined && prev !== p.position) {
+            tasks.push(mnoAnimatePlayer(p.id, prev, p.position));
+        }
+    });
+
+    if (tasks.length > 0) {
+        mnoAnimating = true;
+        await Promise.all(tasks);
+        mnoAnimating = false;
+    }
+
+    players.forEach(p => { mnoLastPositions[p.id] = p.position; });
+}
+
+async function mnoRenderPlayers(trackEl, players) {
+    mnoPlayersCache = players;
+
+    if (!trackEl.querySelector('.track-cell')) {
+        mnoRenderMapBase(trackEl, players);
+        players.forEach(p => mnoMoveChipTo(p.id, p.position, false));
+        players.forEach(p => { mnoLastPositions[p.id] = p.position; });
+        return;
+    }
+
+    await mnoAnimateAll(players);
+}
+</script>

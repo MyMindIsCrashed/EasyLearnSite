@@ -619,6 +619,7 @@ def monopoly_start(request, monopoly_id):
     mon.current_turn_index = 0
     mon.turn_number = 0
     mon.save()
+    mon.bump_version()
 
     messages.success(request, 'Игра началась!')
     return redirect('games:monopoly_host', monopoly_id=mon.id)
@@ -745,6 +746,8 @@ def monopoly_buy_card(request, monopoly_id):
         comment=f'🛒 Карта: {CARD_INFO[card_type]["name"]}',
     )
 
+    mon.bump_version()
+
     return JsonResponse({
         'ok': True,
         'card_type': card_type,
@@ -770,7 +773,6 @@ def monopoly_roll(request, monopoly_id):
 
     applied_card = None
 
-    # ============ БРОСОК ============
     if player.has_extra_turn:
         player.has_extra_turn = False
         applied_card = CARD_DOUBLE
@@ -843,12 +845,13 @@ def monopoly_roll(request, monopoly_id):
         player.last_event = '🔄 Обмен местами'
         final_cell_type = MONOPOLY_MAP[final_pos]['type']
 
+    # ============ ФИНИШ (как в старой логике) ============
     if final_cell_type == 'finish' or player.position >= MONOPOLY_MAX_POSITION:
         player.position = MONOPOLY_MAX_POSITION
         player.is_finished = True
         player.finished_at = timezone.now()
         player.last_event = '🏆 ФИНИШ!'
-        mon.status = 'finished'
+        mon.status = 'finished'          # игра завершается сразу
         mon.finished_at = timezone.now()
         mon.save()
         ScoreTransaction.objects.create(
@@ -863,10 +866,15 @@ def monopoly_roll(request, monopoly_id):
         player.card_used = True
         player.has_extra_turn = True
 
+    # Счётчик ходов игрока (для анимации у других клиентов)
+    player.move_seq += 1
     player.save()
 
     if mon.status == 'playing' and not player.has_extra_turn:
         mon.next_turn()
+
+    # Версия состояния — все клиенты увидят изменение
+    mon.bump_version()
 
     return JsonResponse({
         'dice': dice,
@@ -896,6 +904,7 @@ def monopoly_state(request, monopoly_id):
 
     return JsonResponse({
         'status': mon.status,
+        'state_version': mon.state_version,
         'turn_number': mon.turn_number,
         'current_player_id': current.id if current else None,
         'current_player_name': (current.student.get_full_name() or current.student.username) if current else None,
@@ -917,6 +926,7 @@ def monopoly_state(request, monopoly_id):
                 'card_used': p.card_used,
                 'has_extra_turn': p.has_extra_turn,
                 'is_finished': p.is_finished,
+                'move_seq': p.move_seq,
             }
             for p in players
         ],

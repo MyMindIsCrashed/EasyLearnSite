@@ -148,6 +148,22 @@ class GameSession(models.Model):
         self.save()
         return maze
 
+    @staticmethod
+    def _bfs_distances(maze, start):
+        rows, cols = len(maze), len(maze[0])
+        dist = {start: 0}
+        q = deque([start])
+        while q:
+            r, c = q.popleft()
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                if (0 <= nr < rows and 0 <= nc < cols
+                        and (nr, nc) not in dist
+                        and maze[nr][nc] != 0):
+                    dist[(nr, nc)] = dist[(r, c)] + 1
+                    q.append((nr, nc))
+        return dist
+
     def _build_maze(self, size, braid):
         if size % 2 == 0:
             size += 1
@@ -177,6 +193,40 @@ class GameSession(models.Model):
                         if 0 <= fr < size and 0 <= fc < size and maze[fr][fc] == 1:
                             maze[nr][nc] = 1
                             break
+
+        start = (1, 1)
+        goal = (size - 2, size - 2)
+        dist_from_start = self._bfs_distances(maze, start)
+        dist_from_goal = self._bfs_distances(maze, goal)
+
+        trap_count = max(3, size // 2)
+        placed = 0
+        attempts = 0
+
+        while placed < trap_count and attempts < 500:
+            attempts += 1
+            r = random.randrange(1, size - 1)
+            c = random.randrange(1, size - 1)
+
+            if maze[r][c] != 1:
+                continue
+            if (r, c) == start or (r, c) == goal:
+                continue
+            if (r, c) not in dist_from_start or dist_from_start[(r, c)] < 3:
+                continue
+            if (r, c) not in dist_from_goal or dist_from_goal[(r, c)] < 3:
+                continue
+
+            neighbors = 0
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < size and 0 <= nc < size and maze[nr][nc] != 0:
+                    neighbors += 1
+            if neighbors < 3:
+                continue
+
+            maze[r][c] = 4
+            placed += 1
 
         maze[1][1] = 2
         maze[size - 2][size - 2] = 3
@@ -290,14 +340,6 @@ CARD_INFO = {
 
 
 def calc_card_prices(max_possible_score):
-    """
-    Цены карт — проценты от МАКСИМУМА баллов за квиз.
-    - Двойной ход: 90%
-    - Ход на 7:    75%
-    - Защита:      50%
-
-    Возвращает словарь: {card_id: price}
-    """
     base = max(max_possible_score, 10)
 
     def clamp(v):
@@ -328,12 +370,19 @@ class MonopolyGame(models.Model):
     started_at = models.DateTimeField('Начало', null=True, blank=True)
     finished_at = models.DateTimeField('Финиш', null=True, blank=True)
 
+    # Версия состояния — растёт при каждом изменении.
+    state_version = models.PositiveIntegerField('Версия состояния', default=0)
+
     class Meta:
         verbose_name = 'Партия Монополии'
         verbose_name_plural = 'Партии Монополии'
 
     def __str__(self):
         return f"Монополия: {self.game.title}"
+
+    def bump_version(self):
+        self.state_version += 1
+        self.save(update_fields=['state_version'])
 
     def players_ordered(self):
         return self.players.order_by('joined_at')
@@ -385,6 +434,9 @@ class MonopolyPlayer(models.Model):
     is_finished = models.BooleanField('Дошёл до финиша', default=False)
     finished_at = models.DateTimeField('Финиш', null=True, blank=True)
     joined_at = models.DateTimeField('Подключился', auto_now_add=True)
+
+    # Счётчик ходов игрока — увеличивается при каждом его ходе.
+    move_seq = models.PositiveIntegerField('Номер хода игрока', default=0)
 
     class Meta:
         unique_together = ('monopoly', 'student')

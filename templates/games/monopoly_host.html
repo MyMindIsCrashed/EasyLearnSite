@@ -4,10 +4,10 @@
 {% block content %}
 <div class="container py-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-            <h1 class="h3 fw-bold mb-1">🎲 Монополия: {{ game.title }}</h1>
-            <p class="text-muted mb-0">
+            <h1 class="h4 fw-bold mb-1">🎲 Монополия: {{ game.title }}</h1>
+            <p class="text-muted mb-0 small">
                 PIN: <strong>{{ game.pin_code }}</strong> ·
                 Игроков: {{ players|length }} ·
                 Ход #<span id="turn-number">{{ monopoly.turn_number }}</span> ·
@@ -20,7 +20,7 @@
         <div class="d-flex gap-2 flex-wrap">
             {% if monopoly.status == 'waiting' and players|length >= 2 %}
                 <a href="{% url 'games:monopoly_start' monopoly.id %}"
-                   class="btn btn-primary btn-lg rounded-pill px-4 fw-bold">
+                   class="btn btn-primary rounded-pill px-4 fw-bold">
                     <i class="bi bi-play-fill"></i> Начать игру
                 </a>
             {% elif monopoly.status == 'playing' or monopoly.status == 'finished' %}
@@ -33,29 +33,34 @@
     </div>
 
     {% if monopoly.status == 'waiting' %}
-        <div class="alert alert-info rounded-4 d-flex align-items-center gap-3">
-            <i class="bi bi-info-circle-fill fs-3"></i>
-            <div>
-                Скажи ученикам PIN: <strong class="fs-5">{{ game.pin_code }}</strong><br>
+        <div class="alert alert-info rounded-4 d-flex align-items-center gap-3 py-2 mb-3">
+            <i class="bi bi-info-circle-fill fs-4"></i>
+            <div class="small">
+                PIN для учеников: <strong class="fs-6">{{ game.pin_code }}</strong> ·
                 Нужно минимум <strong>2 игрока</strong>. Сейчас: {{ players|length }}
             </div>
         </div>
     {% endif %}
 
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-3 p-md-4">
-            <h5 class="fw-bold mb-3">
-                <i class="bi bi-map text-primary"></i> Карта
-            </h5>
-            <div class="monopoly-map" id="map"></div>
+    <div class="board-wrap">
+        <div class="board" id="map"></div>
+
+        <div class="board-center">
+            <div class="text-center">
+                <div class="small text-muted mb-1">Сейчас ходят</div>
+                <div class="fw-bold text-primary" id="current-player-name"
+                     style="font-size: 1.4rem; line-height: 1.2;">—</div>
+                <div class="text-muted small mt-2">
+                    Ход #<span id="turn-number-center">{{ monopoly.turn_number }}</span>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
         <div class="card-body p-4">
             <h5 class="fw-bold mb-3">
                 <i class="bi bi-people-fill text-primary"></i> Игроки
-                · Ход: <span class="text-primary fw-bold" id="current-player-name">—</span>
             </h5>
             <div class="row g-3" id="players-list"></div>
         </div>
@@ -64,143 +69,258 @@
 </div>
 
 <style>
-.monopoly-map {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
-}
-.map-cell {
-    background: #f8f9ff;
-    border-radius: 14px;
-    padding: 12px;
-    border: 2px solid #e5e7f5;
+.board-wrap {
     position: relative;
-    min-height: 110px;
-    transition: all 0.2s;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+    border-radius: 32px;
+    padding: 18px;
+    box-shadow:
+        0 20px 60px -20px rgba(99,102,241,0.4),
+        inset 0 0 0 3px rgba(255,255,255,0.95);
+}
+.board { position: absolute; inset: 18px; }
+
+.track-cell {
+    position: absolute;
+    border-radius: 18px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 6px;
+    color: #1f2937;
+    text-align: center;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    border: 3px solid rgba(255,255,255,0.55);
+    box-shadow:
+        0 6px 16px -3px rgba(0,0,0,0.2),
+        0 2px 4px rgba(0,0,0,0.08),
+        inset 0 3px 0 rgba(255,255,255,0.6),
+        inset 0 -4px 0 rgba(0,0,0,0.12);
 }
-.map-cell-num {
+.track-cell::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 45%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
+    pointer-events: none;
+    border-radius: 18px 18px 0 0;
+}
+.track-cell-icon {
+    font-size: 44px;
+    line-height: 1;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3));
+    position: relative;
+    z-index: 2;
+}
+.track-cell-label {
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(0,0,0,0.3);
+    letter-spacing: -0.2px;
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    position: relative;
+    z-index: 2;
+}
+.track-cell-num {
     position: absolute;
     top: 6px;
-    right: 8px;
-    font-size: 11px;
-    color: #9ca3af;
-    font-weight: 700;
+    left: 10px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.95);
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    z-index: 3;
+    letter-spacing: -0.3px;
 }
-.map-cell-icon { font-size: 26px; margin-bottom: 4px; line-height: 1; }
-.map-cell-label {
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.2;
-    color: #4b5563;
+
+.track-start {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #34d399 0%, #10b981 60%, #047857 100%);
+    border-color: #059669;
 }
-.map-cell-players {
+.track-finish {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%),
+        linear-gradient(160deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+    border-color: #b45309;
+}
+.track-boost {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #fde047 0%, #facc15 60%, #eab308 100%);
+    border-color: #ca8a04;
+}
+.track-trap {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%),
+        linear-gradient(160deg, #fb7185 0%, #ef4444 60%, #dc2626 100%);
+    border-color: #b91c1c;
+}
+.track-bonus {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #c084fc 0%, #a855f7 60%, #7e22ce 100%);
+    border-color: #6b21a8;
+}
+.track-swap {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
+        linear-gradient(160deg, #38bdf8 0%, #06b6d4 60%, #0891b2 100%);
+    border-color: #0e7490;
+}
+.track-empty {
+    background:
+        radial-gradient(circle at 30% 20%, #ffffff, transparent 60%),
+        linear-gradient(160deg, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
+    border-color: #cbd5e1;
+}
+.track-empty .track-cell-label {
+    color: #475569;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.08);
+}
+.track-empty .track-cell-num {
+    color: #94a3b8;
+    text-shadow: none;
+}
+
+.board-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48%;
+    height: 48%;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 24px;
+    box-shadow:
+        inset 0 0 0 2px rgba(99,102,241,0.08),
+        0 10px 30px -10px rgba(99,102,241,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 5;
+}
+
+.track-cell-players {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    margin-top: auto;
-    padding-top: 8px;
+    align-content: flex-start;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px;
+    padding-top: 26px;
+    pointer-events: none;
+    z-index: 4;
 }
-.map-player-chip {
-    width: 28px;
-    height: 28px;
+.track-cell-player {
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    box-shadow: 0 2px 6px -2px rgba(99,102,241,0.5);
     border: 2px solid #6366f1;
     overflow: hidden;
+    box-shadow: 0 2px 8px -1px rgba(99,102,241,0.7);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.map-player-chip img { width: 100%; height: 100%; object-fit: cover; }
-.map-start    { background: linear-gradient(135deg, #bbf7d0, #86efac); }
-.map-finish   { background: linear-gradient(135deg, #fde68a, #fbbf24); }
-.map-question { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
-.map-boost    { background: linear-gradient(135deg, #fef3c7, #fde68a); }
-.map-trap     { background: linear-gradient(135deg, #fecaca, #fca5a5); }
-.map-bonus    { background: linear-gradient(135deg, #e9d5ff, #d8b4fe); }
-.map-swap     { background: linear-gradient(135deg, #cffafe, #a5f3fc); }
+.track-cell-player img { width: 100%; height: 100%; object-fit: cover; }
+.track-cell-player.jumping { animation: chipJump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes chipJump {
+    0%   { transform: scale(1) translateY(0); }
+    40%  { transform: scale(1.4) translateY(-10px); }
+    70%  { transform: scale(1.1) translateY(-2px); }
+    100% { transform: scale(1) translateY(0); }
+}
+.track-cell.stepping {
+    box-shadow:
+        0 0 0 5px rgba(245,158,11,0.6),
+        0 12px 26px -4px rgba(245,158,11,0.75);
+    transform: scale(1.12);
+    z-index: 8;
+}
+.track-cell.arrived {
+    box-shadow:
+        0 0 0 5px rgba(16,185,129,0.6),
+        0 12px 26px -4px rgba(16,185,129,0.65);
+}
 
 .player-card {
     background: #f8f9ff;
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: 14px;
+    padding: 12px 14px;
     border: 2px solid #e5e7f5;
     transition: all 0.2s;
 }
 .player-card.current-turn {
     border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
     background: #eef2ff;
+    transform: scale(1.02);
+}
+
+@media (max-width: 900px) {
+    .board-wrap { border-radius: 22px; padding: 10px; }
+    .board { inset: 10px; }
+    .track-cell { border-radius: 12px; padding: 5px 3px; }
+    .track-cell-icon { font-size: 32px; margin-bottom: 3px; }
+    .track-cell-label { font-size: 11px; }
+    .track-cell-num { font-size: 11px; top: 4px; left: 6px; }
+    .track-cell-player { width: 22px; height: 22px; font-size: 12px; }
+    .track-cell-players { padding-top: 18px; }
+    .board-center { width: 52%; height: 52%; padding: 12px; border-radius: 18px; }
+}
+@media (max-width: 600px) {
+    .track-cell-icon { font-size: 24px; }
+    .track-cell-label { font-size: 9px; }
+    .track-cell-num { font-size: 9px; top: 3px; left: 5px; }
+    .track-cell-player { width: 16px; height: 16px; font-size: 10px; }
+    .track-cell-players { padding-top: 14px; }
+    .board-center { width: 56%; height: 56%; padding: 8px; }
 }
 </style>
 
+{% include 'includes/monopoly_animate.html' with map=map %}
+
 <script>
 const MONOPOLY_ID = {{ monopoly.id }};
-const MAP = {{ map|safe }};
-const MAP_LENGTH = {{ max_position }};
+
+let pendingRedirect = false;
 
 const mapEl = document.getElementById('map');
 const playersListEl = document.getElementById('players-list');
 
-function renderMap(players) {
-    mapEl.innerHTML = '';
-    for (let i = 0; i <= MAP_LENGTH; i++) {
-        const cell = MAP[i];
-        const cellEl = document.createElement('div');
-        cellEl.className = `map-cell map-${cell.type}`;
-
-        const num = document.createElement('div');
-        num.className = 'map-cell-num';
-        num.textContent = i;
-        cellEl.appendChild(num);
-
-        const icon = document.createElement('div');
-        icon.className = 'map-cell-icon';
-        icon.textContent = cell.icon;
-        cellEl.appendChild(icon);
-
-        const label = document.createElement('div');
-        label.className = 'map-cell-label';
-        label.textContent = cell.label;
-        cellEl.appendChild(label);
-
-        const box = document.createElement('div');
-        box.className = 'map-cell-players';
-        box.id = 'players-' + i;
-        cellEl.appendChild(box);
-
-        mapEl.appendChild(cellEl);
-    }
-
-    players.forEach(p => {
-        const box = document.getElementById('players-' + p.position);
-        if (!box) return;
-        const chip = document.createElement('div');
-        chip.className = 'map-player-chip';
-        chip.title = p.name;
-        if (p.avatar) chip.innerHTML = `<img src="${p.avatar}" alt="">`;
-        else chip.textContent = p.emoji || '🧑';
-        box.appendChild(chip);
-    });
-}
-
 function renderPlayers(players, currentId) {
     playersListEl.innerHTML = '';
-
     players.forEach(p => {
         const col = document.createElement('div');
-        col.className = 'col-md-6 col-lg-4';
+        col.className = 'col-6 col-md-4 col-lg-3';
 
         let avatarHtml;
         if (p.avatar) {
             avatarHtml = `<img src="${p.avatar}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid white;box-shadow:0 2px 8px -2px rgba(99,102,241,0.3);">`;
         } else {
-            avatarHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;font-size:36px;border-radius:50%;background:linear-gradient(135deg,#eef2ff,#fce7f3);border:2px solid white;">${p.emoji}</span>`;
+            avatarHtml = `<span style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;font-size:34px;border-radius:50%;background:linear-gradient(135deg,#eef2ff,#fce7f3);border:2px solid white;">${p.emoji || '🧑'}</span>`;
         }
 
         const isCurrent = p.id === currentId;
@@ -208,43 +328,57 @@ function renderPlayers(players, currentId) {
 
         col.innerHTML = `
             <div class="${cardClass}">
-                <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2 mb-1">
                     ${avatarHtml}
-                    <div class="flex-grow-1">
-                        <div class="fw-bold">${p.name}</div>
-                        <div class="small text-muted">
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-bold text-truncate">${p.name}</div>
+                        <div class="text-muted small">
                             Позиция: <strong>${p.position}</strong>
-                            · Бонус: <strong>${p.bonus_points}</strong>
+                            ${p.is_finished ? ' · 🏆 Финиш' : ''}
                         </div>
                     </div>
                 </div>
-                <div class="small text-muted">${p.last_event || ''}</div>
+                ${p.last_event ? `<div class="text-muted small mt-1">${p.last_event}</div>` : ''}
             </div>
         `;
         playersListEl.appendChild(col);
     });
 }
 
-function refreshState() {
-    fetch("{% url 'games:monopoly_state' monopoly.id %}")
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('turn-number').textContent = data.turn_number;
-            document.getElementById('current-player-name').textContent = data.current_player_name || '—';
+async function refreshState() {
+    try {
+        const r = await fetch("{% url 'games:monopoly_state' monopoly.id %}");
+        const data = await r.json();
 
-            renderMap(data.players);
-            renderPlayers(data.players, data.current_player_id);
+        document.getElementById('turn-number').textContent = data.turn_number;
+        document.getElementById('turn-number-center').textContent = data.turn_number;
+        document.getElementById('current-player-name').textContent = data.current_player_name || '—';
 
-            if (data.status === 'finished') {
-                setTimeout(() => {
-                    window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
-                }, 2000);
+        await mnoRenderPlayers(mapEl, data.players);
+
+        renderPlayers(data.players, data.current_player_id);
+
+        if (data.status === 'finished') {
+            if (!pendingRedirect) {
+                pendingRedirect = true;
+                const waitRedirect = setInterval(() => {
+                    if (!mnoAnimating) {
+                        clearInterval(waitRedirect);
+                        setTimeout(() => {
+                            window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
+                        }, 1500);
+                    }
+                }, 200);
             }
-        })
-        .catch(e => console.error('state error', e));
+        }
+    } catch (e) {
+        console.error('state error', e);
+    }
 }
 
 refreshState();
-setInterval(refreshState, 1500);
+setInterval(() => {
+    if (!mnoAnimating) refreshState();
+}, 1500);
 </script>
 {% endblock %}
