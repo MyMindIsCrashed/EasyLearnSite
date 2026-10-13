@@ -216,6 +216,42 @@
                                     </div>
                                 </a>
                             {% endif %}
+
+                            <!-- Атака башни -->
+                            {% if tower %}
+                                <a href="{% url 'games:tower_host' tower.id %}"
+                                   class="stage-option {% if game.status != 'quiz' %}stage-option-disabled{% endif %}">
+                                    <div class="stage-option-icon bg-danger-soft">
+                                        <i class="bi bi-shield-fill text-danger"></i>
+                                    </div>
+                                    <div class="stage-option-body">
+                                        <div class="stage-option-title">
+                                            Атака башни
+                                            <span class="badge bg-danger-subtle text-danger ms-1">
+                                                {{ tower.players.count }}
+                                            </span>
+                                        </div>
+                                        <div class="stage-option-desc">Турнир 1 на 1 до 16 игроков</div>
+                                    </div>
+                                    <div class="stage-option-arrow">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </div>
+                                </a>
+                            {% else %}
+                                <a href="{% url 'games:tower_create' game.id %}"
+                                   class="stage-option {% if game.status != 'quiz' %}stage-option-disabled{% endif %}">
+                                    <div class="stage-option-icon bg-danger-soft">
+                                        <i class="bi bi-shield text-danger"></i>
+                                    </div>
+                                    <div class="stage-option-body">
+                                        <div class="stage-option-title">Атака башни</div>
+                                        <div class="stage-option-desc">Создать турнир (2–16 игроков)</div>
+                                    </div>
+                                    <div class="stage-option-arrow">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </div>
+                                </a>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -416,5 +452,6 @@
 /* Фоны */
 .bg-warning-soft { background: #fff3d1; }
 .bg-success-soft { background: #dff5ea; }
+.bg-danger-soft  { background: #fee2e2; }
 </style>
 {% endblock %}

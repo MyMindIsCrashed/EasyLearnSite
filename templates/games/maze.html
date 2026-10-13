@@ -538,6 +538,7 @@ function sendMove(direction) {
         document.getElementById('remaining').textContent = data.remaining;
         document.getElementById('spent').textContent = data.spent_points;
 
+        // ⚠️ ИСПРАВЛЕНО: сначала убираем капкан из MAZE, потом renderMaze()
         if (data.trap_triggered && MAZE[endPos.row][endPos.col] === 4) {
             MAZE[endPos.row][endPos.col] = 1;
         }

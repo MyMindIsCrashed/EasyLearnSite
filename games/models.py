@@ -1,5 +1,6 @@
 import random
 import string
+import math
 from collections import deque
 from django.db import models
 from django.conf import settings
@@ -122,7 +123,6 @@ class GameSession(models.Model):
 
     def generate_personal_maze(self):
         score = self.quiz_score
-
         if score <= 20:
             size = 7
         elif score <= 40:
@@ -369,8 +369,6 @@ class MonopolyGame(models.Model):
     created_at = models.DateTimeField('Создана', auto_now_add=True)
     started_at = models.DateTimeField('Начало', null=True, blank=True)
     finished_at = models.DateTimeField('Финиш', null=True, blank=True)
-
-    # Версия состояния — растёт при каждом изменении.
     state_version = models.PositiveIntegerField('Версия состояния', default=0)
 
     class Meta:
@@ -434,8 +432,6 @@ class MonopolyPlayer(models.Model):
     is_finished = models.BooleanField('Дошёл до финиша', default=False)
     finished_at = models.DateTimeField('Финиш', null=True, blank=True)
     joined_at = models.DateTimeField('Подключился', auto_now_add=True)
-
-    # Счётчик ходов игрока — увеличивается при каждом его ходе.
     move_seq = models.PositiveIntegerField('Номер хода игрока', default=0)
 
     class Meta:
@@ -450,3 +446,393 @@ class MonopolyPlayer(models.Model):
     @property
     def wallet(self):
         return max(0, self.wallet_start - self.points_spent)
+
+
+# ============================================================
+# АТАКА БАШНИ
+# ============================================================
+import math
+
+TOWER_MAX_HP = 100
+
+ATTACK_ARROW = 'arrow'
+ATTACK_METEOR = 'meteor'
+ATTACK_FIREBALL = 'fireball'
+ATTACK_ROCK = 'rock'
+ATTACK_LIGHTNING = 'lightning'
+
+TOWER_ATTACKS = {
+    ATTACK_ARROW: {
+        'name': 'Стрела', 'emoji': '🏹', 'damage': 5, 'chance': 100,
+        'desc': 'Обычный выстрел из лука', 'is_default': True,
+    },
+    ATTACK_METEOR: {
+        'name': 'Метеорит', 'emoji': '☄️', 'damage': 40,
+        'desc': 'Мощный удар с неба (если не сработает — стрела)',
+        'is_default': False,
+    },
+    ATTACK_FIREBALL: {
+        'name': 'Огненный шар', 'emoji': '🔥', 'damage': 30,
+        'desc': 'Поджигает башню врага (если не сработает — стрела)',
+        'is_default': False,
+    },
+    ATTACK_ROCK: {
+        'name': 'Камнепад', 'emoji': '🪨', 'damage': 25,
+        'desc': 'Обрушивает камни (если не сработает — стрела)',
+        'is_default': False,
+    },
+    ATTACK_LIGHTNING: {
+        'name': 'Молния', 'emoji': '⚡', 'damage': 20,
+        'desc': 'Быстрый разряд (если не сработает — стрела)',
+        'is_default': False,
+    },
+}
+
+# Шанс срабатывания спецатаки (50%)
+TOWER_SPECIAL_CHANCE = 50
+
+# Цены (% от максимума за квиз)
+TOWER_ATTACK_PRICES = {
+    ATTACK_METEOR: 90,
+    ATTACK_FIREBALL: 70,
+    ATTACK_ROCK: 50,
+    ATTACK_LIGHTNING: 40,
+}
+
+
+class TowerGame(models.Model):
+    STATUS_CHOICES = (
+        ('waiting', 'Ожидание'),
+        ('playing', 'Игра идёт'),
+        ('finished', 'Завершена'),
+    )
+
+    game = models.OneToOneField(
+        Game, on_delete=models.CASCADE,
+        related_name='tower', verbose_name='Игра'
+    )
+    status = models.CharField('Статус', max_length=10, choices=STATUS_CHOICES, default='waiting')
+    created_at = models.DateTimeField('Создана', auto_now_add=True)
+    started_at = models.DateTimeField('Начало', null=True, blank=True)
+    finished_at = models.DateTimeField('Финиш', null=True, blank=True)
+    state_version = models.PositiveIntegerField('Версия состояния', default=0)
+
+    class Meta:
+        verbose_name = 'Турнир «Атака башни»'
+        verbose_name_plural = 'Турниры «Атака башни»'
+
+    def __str__(self):
+        return f"Башни: {self.game.title}"
+
+    def bump_version(self):
+        self.state_version += 1
+        self.save(update_fields=['state_version'])
+
+    def build_bracket(self):
+        import random as rnd
+        players = list(self.players.all())
+        rnd.shuffle(players)
+
+        n = len(players)
+        if n < 2:
+            raise ValueError('Нужно минимум 2 игрока')
+
+        size = 2
+        while size < n:
+            size *= 2
+        while len(players) < size:
+            players.append(None)
+
+        matches = []
+        for i in range(0, size, 2):
+            p1 = players[i]
+            p2 = players[i + 1]
+            is_bye = bool((p1 and not p2) or (p2 and not p1))
+
+            if is_bye:
+                winner = p1 if p1 else p2
+                status = 'finished'
+            elif p1 and p2:
+                winner = None
+                status = 'ready'
+            else:
+                continue
+
+            match = TowerMatch.objects.create(
+                tower=self,
+                round_number=1,
+                match_index=i // 2,
+                player1=p1,
+                player2=p2,
+                status=status,
+                winner=winner,
+                is_bye=is_bye,
+                hp1=TOWER_MAX_HP if p1 else 0,
+                hp2=TOWER_MAX_HP if p2 else 0,
+                finished_at=timezone.now() if is_bye else None,
+            )
+            matches.append(match)
+
+            if is_bye and winner:
+                match._advance_winner()
+
+        total_rounds = int(math.log2(size))
+        prev_matches = matches
+        for r in range(2, total_rounds + 1):
+            next_matches = []
+            count = max(1, len(prev_matches) // 2)
+            for i in range(count):
+                m = TowerMatch.objects.create(
+                    tower=self, round_number=r, match_index=i,
+                    status='pending',
+                    hp1=TOWER_MAX_HP, hp2=TOWER_MAX_HP,
+                )
+                next_matches.append(m)
+            prev_matches = next_matches
+
+        self.status = 'playing'
+        self.started_at = timezone.now()
+        self.save()
+        self.bump_version()
+        return matches
+
+    def all_matches(self):
+        return self.matches.order_by('round_number', 'match_index')
+
+    def current_round(self):
+        for m in self.matches.order_by('round_number', 'match_index'):
+            if m.status in ['ready', 'playing']:
+                return m.round_number
+        last = self.matches.order_by('-round_number').first()
+        return last.round_number if last else 1
+
+    def current_match(self):
+        m = self.matches.filter(status='playing').first()
+        if m:
+            return m
+        return self.matches.filter(
+            status='ready',
+            player1__isnull=False,
+            player2__isnull=False,
+        ).order_by('round_number', 'match_index').first()
+
+    def check_finished(self):
+        if not self.matches.exclude(status='finished').exists():
+            self.status = 'finished'
+            self.finished_at = timezone.now()
+            self.save()
+            final = self.matches.order_by('-round_number', 'match_index').first()
+            if final and final.winner:
+                final.winner.is_winner = True
+                final.winner.save()
+            return True
+        return False
+
+
+class TowerPlayer(models.Model):
+    tower = models.ForeignKey(
+        TowerGame, on_delete=models.CASCADE,
+        related_name='players', verbose_name='Турнир'
+    )
+    student = models.ForeignKey(
+        'accounts.User', on_delete=models.CASCADE,
+        related_name='tower_players', verbose_name='Ученик'
+    )
+    wallet_start = models.IntegerField('Баллы на старте', default=0)
+    points_spent = models.IntegerField('Потрачено', default=0)
+
+    # Купленная спецатака (покупается ДО турнира в магазине)
+    chosen_attack = models.CharField(
+        'Купленная спецатака', max_length=20, blank=True, default='',
+        choices=[(ATTACK_METEOR, '☄️ Метеорит'),
+                 (ATTACK_FIREBALL, '🔥 Огненный шар'),
+                 (ATTACK_ROCK, '🪨 Камнепад'),
+                 (ATTACK_LIGHTNING, '⚡ Молния'),
+                 ('', 'Нет')]
+    )
+    joined_at = models.DateTimeField('Подключился', auto_now_add=True)
+    is_eliminated = models.BooleanField('Выбыл', default=False)
+    is_winner = models.BooleanField('Победитель', default=False)
+
+    class Meta:
+        unique_together = ('tower', 'student')
+        ordering = ['joined_at']
+        verbose_name = 'Участник турнира'
+        verbose_name_plural = 'Участники турнира'
+
+    def __str__(self):
+        return f"{self.student.username} @ {self.tower.game.title}"
+
+    @property
+    def wallet(self):
+        return max(0, self.wallet_start - self.points_spent)
+
+
+class TowerMatch(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Ожидает'),
+        ('ready', 'Готов'),
+        ('playing', 'Идёт'),
+        ('finished', 'Завершён'),
+    )
+
+    tower = models.ForeignKey(
+        TowerGame, on_delete=models.CASCADE,
+        related_name='matches', verbose_name='Турнир'
+    )
+    round_number = models.PositiveIntegerField('Раунд', default=1)
+    match_index = models.PositiveIntegerField('Номер в раунде', default=0)
+
+    player1 = models.ForeignKey(
+        TowerPlayer, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='matches_as_p1',
+    )
+    player2 = models.ForeignKey(
+        TowerPlayer, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='matches_as_p2',
+    )
+
+    hp1 = models.IntegerField('HP башни 1', default=TOWER_MAX_HP)
+    hp2 = models.IntegerField('HP башни 2', default=TOWER_MAX_HP)
+
+    turn = models.PositiveSmallIntegerField('Чей ход', default=1)
+    status = models.CharField('Статус', max_length=10, choices=STATUS_CHOICES, default='pending')
+    winner = models.ForeignKey(
+        TowerPlayer, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='matches_won',
+    )
+    is_bye = models.BooleanField('Автопроход', default=False)
+
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    log = models.JSONField('Лог боя', default=list, blank=True)
+
+    class Meta:
+        ordering = ['round_number', 'match_index']
+
+    def __str__(self):
+        p1 = self.player1.student.username if self.player1 else '—'
+        p2 = self.player2.student.username if self.player2 else '—'
+        return f"R{self.round_number} #{self.match_index}: {p1} vs {p2}"
+
+    @property
+    def round_name(self):
+        total = self.tower.matches.aggregate(m=models.Max('round_number'))['m'] or 1
+        names = {
+            total: 'Финал',
+            total - 1: 'Полуфинал',
+            total - 2: '1/4 финала',
+            total - 3: '1/8 финала',
+        }
+        return names.get(self.round_number, f'Раунд {self.round_number}')
+
+    def check_finish(self):
+        if self.hp1 <= 0 and self.hp2 <= 0:
+            self.winner = self.player2 if self.hp1 < self.hp2 else self.player1
+        elif self.hp1 <= 0:
+            self.winner = self.player2
+        elif self.hp2 <= 0:
+            self.winner = self.player1
+
+        if self.winner:
+            self.status = 'finished'
+            self.finished_at = timezone.now()
+            self.save()
+            self._advance_winner()
+            return True
+        return False
+
+    def _advance_winner(self):
+        if not self.winner:
+            return
+
+        loser = self.player2 if self.winner == self.player1 else self.player1
+        if loser:
+            loser.is_eliminated = True
+            loser.save()
+
+        next_round = self.round_number + 1
+        next_index = self.match_index // 2
+        next_match = self.tower.matches.filter(
+            round_number=next_round, match_index=next_index,
+        ).first()
+
+        if not next_match:
+            self.winner.is_winner = True
+            self.winner.save()
+            self.tower.check_finished()
+            return
+
+        if self.match_index % 2 == 0:
+            next_match.player1 = self.winner
+        else:
+            next_match.player2 = self.winner
+
+        if next_match.player1 and next_match.player2:
+            next_match.status = 'ready'
+        next_match.save()
+        self.tower.bump_version()
+
+    def do_attack(self, attacker):
+        """
+        Единая атака.
+        Если у игрока есть купленная спецатака и она сработала (50%) — бьёт она.
+        Иначе — обычная стрела.
+        """
+        if self.status != 'playing':
+            return {'error': 'not_playing'}
+
+        current = self.player1 if self.turn == 1 else self.player2
+        if current is None or current.id != attacker.id:
+            return {'error': 'not_your_turn'}
+
+        if attacker.id == self.player1_id:
+            target_hp_field = 'hp2'
+            defender = self.player2
+        else:
+            target_hp_field = 'hp1'
+            defender = self.player1
+
+        # По умолчанию — стрела
+        attack_type = ATTACK_ARROW
+        attack_info = TOWER_ATTACKS[ATTACK_ARROW]
+
+        # Проверка спецатаки
+        if attacker.chosen_attack and attacker.chosen_attack in TOWER_ATTACKS:
+            if random.randint(1, 100) <= TOWER_SPECIAL_CHANCE:
+                attack_type = attacker.chosen_attack
+                attack_info = TOWER_ATTACKS[attack_type]
+
+        # Наносим урон
+        damage = attack_info['damage']
+        new_hp = getattr(self, target_hp_field) - damage
+        setattr(self, target_hp_field, max(0, new_hp))
+
+        result = {
+            'attack': attack_type,
+            'attack_name': attack_info['name'],
+            'attack_emoji': attack_info['emoji'],
+            'damage': damage,
+            'attacker_id': attacker.id,
+            'attacker_name': attacker.student.get_full_name() or attacker.student.username,
+            'defender_id': defender.id if defender else None,
+            'defender_name': (defender.student.get_full_name() or defender.student.username) if defender else '',
+            'hp_after': getattr(self, target_hp_field),
+            'is_special': attack_type != ATTACK_ARROW,
+        }
+
+        log = list(self.log or [])
+        log.append(result)
+        self.log = log
+
+        # Передаём ход
+        self.turn = 2 if self.turn == 1 else 1
+
+        # Конец боя?
+        finished = self.check_finish()
+        result['finished'] = finished
+        result['winner_id'] = self.winner.id if self.winner else None
+
+        self.save()
+        self.tower.bump_version()
+        return result

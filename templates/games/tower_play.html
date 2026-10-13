@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+{% block title %}Атака башни — {{ tower.game.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4 tower-page">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h1 class="h5 fw-bold mb-0">🏰 {{ match.round_name }}</h1>
+        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1">
+            Ход: <span id="turn-label">…</span>
+        </span>
+    </div>
+
+    <div class="battle-arena" id="arena">
+        <div class="tower-side" id="side-1">
+            <div class="player-name" id="name-1">—</div>
+            <div class="tower-wrap">
+                <div class="tower" id="tower-1">
+                    <div class="tower-roof"></div>
+                    <div class="tower-body">
+                        <div class="tower-hp-bar">
+                            <div class="tower-hp-fill" id="hp-fill-1"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hp-text" id="hp-text-1">100 / 100</div>
+            </div>
+        </div>
+
+        <div class="battle-center">
+            <div class="vs-label">VS</div>
+            <div id="anim-layer" class="anim-layer"></div>
+        </div>
+
+        <div class="tower-side" id="side-2">
+            <div class="player-name" id="name-2">—</div>
+            <div class="tower-wrap">
+                <div class="tower" id="tower-2">
+                    <div class="tower-roof"></div>
+                    <div class="tower-body">
+                        <div class="tower-hp-bar">
+                            <div class="tower-hp-fill" id="hp-fill-2"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hp-text" id="hp-text-2">100 / 100</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
+        <div class="text-center">
+            <button id="attack-btn" class="btn-attack-main" disabled>
+                ⚔️ АТАКОВАТЬ
+            </button>
+
+            {% if special_attack_info %}
+                <div class="mt-2 small text-muted">
+                    🎯 Шанс <b>{{ special_chance }}%</b> призвать
+                    <b>{{ special_attack_info.emoji }} {{ special_attack_info.name }}</b>
+                    ({{ special_attack_info.damage }} урона), иначе — 🏹 Стрела (5 урона)
+                </div>
+            {% else %}
+                <div class="mt-2 small text-muted">
+                    🏹 Только стрела: 5 урона, 100%
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
+        <h6 class="fw-bold mb-2">📜 Лог боя</h6>
+        <div id="battle-log" class="battle-log small text-muted">Пока пусто…</div>
+    </div>
+
+    <div id="message" class="alert mt-3 d-none"></div>
+</div>
+
+<style>
+.tower-page { max-width: 1000px; margin: 0 auto; }
+
+.battle-arena {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+    border-radius: 28px;
+    padding: 24px;
+    min-height: 380px;
+    align-items: end;
+    position: relative;
+    overflow: hidden;
+}
+.battle-arena::before {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
+    background: linear-gradient(180deg, transparent, rgba(34, 197, 94, 0.25));
+    pointer-events: none;
+}
+.tower-side { display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 2; }
+.player-name {
+    font-weight: 900; font-size: 16px; color: #1e3a8a;
+    background: white; padding: 4px 14px; border-radius: 100px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.tower-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.tower {
+    width: 90px; height: 180px; position: relative; transition: transform 0.2s;
+}
+.tower.shake { animation: towerShake 0.5s; }
+@keyframes towerShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+}
+.tower.destroyed { opacity: 0.4; filter: grayscale(1); }
+
+.tower-roof {
+    width: 0; height: 0;
+    border-left: 55px solid transparent;
+    border-right: 55px solid transparent;
+    border-bottom: 40px solid #b91c1c;
+    margin-left: -10px;
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
+    position: relative; z-index: 2;
+}
+.tower-body {
+    width: 80px; height: 140px;
+    background: linear-gradient(90deg, #78716c 0%, #a8a29e 50%, #78716c 100%);
+    border-radius: 6px 6px 4px 4px;
+    margin: 0 auto;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.25), 0 8px 16px -4px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 6px;
+}
+.tower-hp-bar {
+    width: 100%; height: 10px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 100px; overflow: hidden;
+}
+.tower-hp-fill {
+    height: 100%; background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 100px; transition: width 0.5s ease, background 0.3s;
+    width: 100%;
+}
+.tower-hp-fill.low { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.tower-hp-fill.mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.hp-text { font-weight: 900; font-size: 14px; color: #1e3a8a; }
+
+.battle-center {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; min-width: 80px;
+}
+.vs-label {
+    font-size: 42px; font-weight: 900; color: #dc2626;
+    text-shadow: 0 3px 0 white, 0 5px 12px rgba(0,0,0,0.3);
+    font-style: italic;
+}
+.anim-layer { position: absolute; inset: 0; pointer-events: none; }
+.projectile {
+    position: absolute; font-size: 44px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4)); z-index: 10;
+}
+.explosion {
+    position: absolute; font-size: 64px;
+    animation: explode 0.6s ease-out forwards; z-index: 11;
+}
+@keyframes explode {
+    0% { transform: scale(0.3); opacity: 0; }
+    40% { transform: scale(1.4); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+.btn-attack-main {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 16px 40px;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #991b1b, 0 8px 20px rgba(220,38,38,0.4);
+    transition: all 0.1s;
+}
+.btn-attack-main:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 0 #991b1b, 0 10px 24px rgba(220,38,38,0.5);
+}
+.btn-attack-main:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #991b1b, 0 4px 12px rgba(220,38,38,0.4);
+}
+.btn-attack-main:disabled {
+    background: #9ca3af;
+    box-shadow: 0 6px 0 #4b5563;
+    cursor: not-allowed;
+}
+
+.battle-log {
+    max-height: 140px; overflow-y: auto;
+    background: #fafaff; border-radius: 12px; padding: 10px;
+    font-family: monospace;
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+
+    const TOWER_ID = {{ tower.id }};
+    const MY_ID = {{ player.id }};
+    const MY_SIDE = {% if match.player1_id == player.id %}1{% else %}2{% endif %};
+
+    let busy = false;
+    let lastLogLength = -1;
+
+    const btn = document.getElementById('attack-btn');
+
+    btn.addEventListener('click', function() {
+        if (busy) return;
+        busy = true;
+        btn.disabled = true;
+
+        fetch("{% url 'games:tower_attack' tower.id %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                showMsg('Ошибка: ' + data.error);
+                busy = false;
+                refreshState();
+                return;
+            }
+            animateAttack(data).then(function() {
+                refreshState();
+            });
+        })
+        .catch(function(e) {
+            console.error('ATTACK ERROR:', e);
+            showMsg('Ошибка сети');
+            busy = false;
+        });
+    });
+
+    function animateAttack(data) {
+        return new Promise(function(resolve) {
+            var fromSide = (data.attacker_id === MY_ID) ? MY_SIDE : (MY_SIDE === 1 ? 2 : 1);
+            var targetSide = fromSide === 1 ? 2 : 1;
+            var arena = document.getElementById('arena');
+            var fromEl = document.getElementById('tower-' + fromSide);
+            var toEl = document.getElementById('tower-' + targetSide);
+            var layer = document.getElementById('anim-layer');
+
+            if (!arena || !fromEl || !toEl || !layer) { resolve(); return; }
+
+            var fromRect = fromEl.getBoundingClientRect();
+            var toRect = toEl.getBoundingClientRect();
+            var arenaRect = arena.getBoundingClientRect();
+
+            var startX = fromRect.left - arenaRect.left + fromRect.width / 2;
+            var startY = fromRect.top - arenaRect.top + fromRect.height / 3;
+            var endX = toRect.left - arenaRect.left + toRect.width / 2;
+            var endY = toRect.top - arenaRect.top + toRect.height / 3;
+
+            var proj = document.createElement('div');
+            proj.className = 'projectile';
+            proj.textContent = data.attack_emoji;
+            proj.style.left = startX + 'px';
+            proj.style.top = startY + 'px';
+            proj.style.transition = 'all 0.6s cubic-bezier(0.5, 0, 1, 1)';
+            layer.appendChild(proj);
+
+            requestAnimationFrame(function() {
+                proj.style.left = endX + 'px';
+                proj.style.top = endY + 'px';
+                proj.style.transform = 'rotate(720deg)';
+            });
+
+            setTimeout(function() {
+                proj.remove();
+
+                var boom = document.createElement('div');
+                boom.className = 'explosion';
+                boom.textContent = data.is_special ? '💥' : '🎯';
+                boom.style.left = endX + 'px';
+                boom.style.top = endY + 'px';
+                layer.appendChild(boom);
+
+                toEl.classList.add('shake');
+
+                setTimeout(function() {
+                    toEl.classList.remove('shake');
+                    boom.remove();
+                    resolve();
+                }, 600);
+            }, 620);
+        });
+    }
+
+    function applyState(data) {
+        var m = data.current_match;
+        if (!m) {
+            setTimeout(function() {
+                if (data.status === 'finished') {
+                    window.location.href = "{% url 'games:tower_results' tower.id %}";
+                } else {
+                    window.location.href = "{% url 'games:tower_play' tower.id %}";
+                }
+            }, 1500);
+            return;
+        }
+
+        document.getElementById('name-1').textContent = m.player1_name || '—';
+        document.getElementById('name-2').textContent = m.player2_name || '—';
+
+        var maxHp = 100;
+        var hp1 = Math.max(0, m.hp1);
+        var hp2 = Math.max(0, m.hp2);
+
+        document.getElementById('hp-text-1').textContent = hp1 + ' / ' + maxHp;
+        document.getElementById('hp-text-2').textContent = hp2 + ' / ' + maxHp;
+
+        var f1 = document.getElementById('hp-fill-1');
+        var f2 = document.getElementById('hp-fill-2');
+        f1.style.width = Math.max(0, hp1 / maxHp * 100) + '%';
+        f2.style.width = Math.max(0, hp2 / maxHp * 100) + '%';
+        f1.className = 'tower-hp-fill' + (hp1 <= 30 ? ' low' : hp1 <= 60 ? ' mid' : '');
+        f2.className = 'tower-hp-fill' + (hp2 <= 30 ? ' low' : hp2 <= 60 ? ' mid' : '');
+
+        document.getElementById('tower-1').classList.toggle('destroyed', hp1 <= 0);
+        document.getElementById('tower-2').classList.toggle('destroyed', hp2 <= 0);
+
+        var turnLabel = document.getElementById('turn-label');
+        var isMyTurn = m.status === 'playing' &&
+            ((m.turn === 1 && m.player1_id === MY_ID) || (m.turn === 2 && m.player2_id === MY_ID));
+
+        if (m.status === 'finished') {
+            turnLabel.textContent = '🏆 Бой завершён';
+        } else if (isMyTurn) {
+            turnLabel.textContent = '🎯 Твой ход!';
+        } else {
+            turnLabel.textContent = 'Ждём соперника…';
+        }
+
+        btn.disabled = !isMyTurn || busy;
+
+        var log = m.log || [];
+        if (log.length !== lastLogLength) {
+            lastLogLength = log.length;
+            var logEl = document.getElementById('battle-log');
+            if (log.length === 0) {
+                logEl.innerHTML = '<div class="text-muted">Пока пусто…</div>';
+            } else {
+                logEl.innerHTML = log.map(function(e) {
+                    var cls = e.is_special ? 'text-danger fw-bold' : 'text-success';
+                    return '<div class="' + cls + '">' + e.attack_emoji + ' <b>' +
+                           e.attacker_name + '</b> → <b>' + e.defender_name + '</b> · -' + e.damage + ' HP</div>';
+                }).join('');
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+
+        if (m.status === 'finished') {
+            setTimeout(function() {
+                window.location.href = "{% url 'games:tower_play' tower.id %}";
+            }, 2500);
+        }
+    }
+
+    function refreshState() {
+        fetch("{% url 'games:tower_state' tower.id %}")
+            .then(function(r) {
+                if (!r.ok) return null;
+                return r.json();
+            })
+            .then(function(data) {
+                if (!data) { busy = false; return; }
+                applyState(data);
+                busy = false;
+            })
+            .catch(function(e) {
+                console.error('state error', e);
+                busy = false;
+            });
+    }
+
+    function showMsg(text) {
+        var el = document.getElementById('message');
+        if (!el) return;
+        el.className = 'alert alert-danger mt-3';
+        el.textContent = text;
+        setTimeout(function() { el.className = 'alert mt-3 d-none'; }, 3500);
+    }
+
+    refreshState();
+    setInterval(function() {
+        if (!busy) refreshState();
+    }, 1500);
+})();
+</script>
+{% endblock %}

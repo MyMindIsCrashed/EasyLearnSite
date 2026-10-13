@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Управление турниром — {{ tower.game.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h1 class="h3 fw-bold mb-1">🏰 Атака башни</h1>
+                    <p class="text-muted mb-0">
+                        {{ tower.game.title }} · Игроков: {{ players|length }}
+                    </p>
+                </div>
+                <div>
+                    {% if tower.status == 'waiting' %}
+                        <span class="badge bg-secondary-subtle text-secondary fs-6">Ожидание</span>
+                    {% elif tower.status == 'playing' %}
+                        <span class="badge bg-info-subtle text-info fs-6">Игра идёт</span>
+                    {% else %}
+                        <span class="badge bg-success-subtle text-success fs-6">Завершён</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if tower.status == 'waiting' %}
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">👥 Игроки и их выбор</h5>
+                <div class="row g-2">
+                    {% for p in players %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="p-3 rounded-3 d-flex align-items-center gap-2" style="background:#f8f9ff;">
+                                {% include 'includes/avatar.html' with user=p.student size=36 %}
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold small">{{ p.student.get_full_name|default:p.student.username }}</div>
+                                    <div class="text-muted" style="font-size: 12px;">
+                                        💰 {{ p.wallet_start }} баллов
+                                        {% if p.chosen_attack %}
+                                            · ✅ {{ p.get_chosen_attack_display }}
+                                        {% else %}
+                                            · ⏳ выбирает…
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'games:tower_start' tower.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill">
+                🚀 Начать турнир
+            </button>
+        </form>
+
+    {% else %}
+        {% if current_match %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold mb-0">⚔️ Текущий бой — {{ current_match.round_name }}</h5>
+                        {% if current_match.status == 'ready' %}
+                            <button class="btn btn-success rounded-pill px-4" id="start-match-btn">
+                                ▶️ Запустить бой
+                            </button>
+                        {% elif current_match.status == 'playing' %}
+                            <span class="badge bg-info-subtle text-info fs-6">
+                                Идёт
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3 bg-light">
+                                <div class="fw-bold">
+                                    {{ current_match.player1.student.get_full_name|default:current_match.player1.student.username|default:"—" }}
+                                </div>
+                                <div class="progress mt-2" style="height: 12px;">
+                                    <div class="progress-bar bg-success" style="width: {% widthratio current_match.hp1 100 100 %}%"></div>
+                                </div>
+                                <div class="small text-muted mt-1">HP: {{ current_match.hp1 }} / 100</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3 bg-light">
+                                <div class="fw-bold">
+                                    {{ current_match.player2.student.get_full_name|default:current_match.player2.student.username|default:"—" }}
+                                </div>
+                                <div class="progress mt-2" style="height: 12px;">
+                                    <div class="progress-bar bg-danger" style="width: {% widthratio current_match.hp2 100 100 %}%"></div>
+                                </div>
+                                <div class="small text-muted mt-1">HP: {{ current_match.hp2 }} / 100</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">🏆 Турнирная сетка</h5>
+                {% for r_num, matches in rounds.items %}
+                    <div class="mb-4">
+                        <h6 class="text-muted small text-uppercase fw-bold mb-2">Раунд {{ r_num }}</h6>
+                        <div class="row g-2">
+                            {% for m in matches %}
+                                <div class="col-md-6">
+                                    <div class="p-2 rounded-3 border {% if m.status == 'playing' %}border-warning bg-warning-subtle{% elif m.status == 'finished' %}bg-light{% else %}bg-white{% endif %}">
+                                        <div class="d-flex justify-content-between align-items-center small">
+                                            <span class="{% if m.winner == m.player1 %}fw-bold text-success{% endif %}">
+                                                {% if m.player1 %}{{ m.player1.student.username }}{% else %}—{% endif %}
+                                            </span>
+                                            <span class="text-muted mx-2">vs</span>
+                                            <span class="{% if m.winner == m.player2 %}fw-bold text-success{% endif %}">
+                                                {% if m.player2 %}{{ m.player2.student.username }}{% else %}—{% endif %}
+                                            </span>
+                                        </div>
+                                        {% if m.status == 'finished' and m.winner %}
+                                            <div class="text-center small text-success mt-1">🏆 {{ m.winner.student.username }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="text-center mt-3">
+        <a href="{% url 'games:manage' tower.game.id %}" class="btn btn-link text-muted">← Назад к управлению</a>
+    </div>
+</div>
+
+<script>
+(function() {
+    var startBtn = document.getElementById('start-match-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', function() {
+            startBtn.disabled = true;
+            startBtn.textContent = 'Запуск...';
+            fetch("{% url 'games:tower_next_match' tower.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    alert('Ошибка: ' + data.error);
+                    startBtn.disabled = false;
+                    startBtn.textContent = '▶️ Запустить бой';
+                    return;
+                }
+                location.reload();
+            })
+            .catch(function() {
+                alert('Ошибка сети');
+                startBtn.disabled = false;
+                startBtn.textContent = '▶️ Запустить бой';
+            });
+        });
+    }
+
+    // Авто-обновление каждые 5 сек, если игра идёт
+    if ("{{ tower.status }}" === "playing") {
+        setInterval(function() { location.reload(); }, 5000);
+    }
+})();
+</script>
+{% endblock %}

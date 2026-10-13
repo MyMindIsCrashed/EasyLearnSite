@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Магазин атак — Атака башни{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-4">
+        <div style="font-size: 64px;">🏰</div>
+        <h1 class="fw-bold mb-2">Выбери свою атаку</h1>
+        <p class="text-muted">
+            Купи одну способность за баллы из квиза.<br>
+            <strong>Обычная стрела</strong> есть у всех бесплатно.
+        </p>
+
+        <div class="d-inline-block px-4 py-2 rounded-pill mt-3" style="background: #fff3d1; border: 2px solid #f59e0b;">
+            <span style="font-size: 20px;">💰</span>
+            <strong class="fs-4 ms-1" style="color: #92400e;">{{ wallet }}</strong>
+            <span class="ms-1" style="color: #92400e;">твоих баллов</span>
+        </div>
+
+        {% if wallet == 0 %}
+            <div class="alert alert-info mt-4 mx-auto" style="max-width: 600px;">
+                У тебя <strong>0 баллов</strong>. Можешь играть только со стрелой!
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        {% for card in cards %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card-shop {% if not card.affordable %}disabled{% endif %}"
+                     data-card="{{ card.id }}">
+                    <div class="card-shop-emoji">{{ card.emoji }}</div>
+                    <h3 class="card-shop-title">{{ card.name }}</h3>
+                    <p class="card-shop-desc">{{ card.desc }}</p>
+
+                    <div class="mb-2">
+                        <span class="badge bg-danger-subtle text-danger">💥 {{ card.damage }} урона</span>
+                        <span class="badge bg-info-subtle text-info">🎲 {{ card.chance }}%</span>
+                    </div>
+
+                    <div class="card-shop-price-wrap">
+                        <div class="card-shop-price">💰 {{ card.price }}</div>
+                        <div class="card-shop-percent">{{ card.percent }}% от максимума</div>
+                    </div>
+
+                    <button class="btn-buy-card w-100" {% if not card.affordable %}disabled{% endif %}>
+                        {% if card.affordable %}Купить{% else %}Не хватает{% endif %}
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{% url 'games:tower_play' tower.id %}"
+           class="btn btn-outline-primary rounded-pill px-5">
+            🏹 Играть только со стрелой
+        </a>
+    </div>
+
+    <div id="message" class="alert mt-4 mx-auto d-none" style="max-width: 500px;"></div>
+</div>
+
+<style>
+.card-shop {
+    background: white; border-radius: 24px; padding: 24px 18px;
+    border: 3px solid #e5e7f5; transition: all 0.25s;
+    text-align: center; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+}
+.card-shop:hover:not(.disabled) {
+    transform: translateY(-8px);
+    box-shadow: 0 24px 48px -16px rgba(124, 58, 237, 0.4);
+    border-color: var(--brand, #7c3aed);
+}
+.card-shop.disabled { opacity: 0.55; filter: grayscale(0.4); }
+.card-shop-emoji { font-size: 56px; margin-bottom: 12px; }
+.card-shop-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+.card-shop-desc { color: #6b7280; font-size: 13px; line-height: 1.5; flex-grow: 1; margin-bottom: 12px; }
+.card-shop-price-wrap { margin-bottom: 12px; width: 100%; }
+.card-shop-price { font-size: 18px; font-weight: 900; color: #92400e; }
+.card-shop-percent { font-size: 12px; color: #9a97ad; font-weight: 700; margin-top: 4px; }
+.btn-buy-card {
+    background: #7c3aed; color: white; border: none; border-radius: 14px;
+    padding: 12px 24px; font-weight: 800; font-size: 14px;
+    cursor: pointer; transition: all 0.15s; box-shadow: 0 3px 0 #5b21b6;
+}
+.btn-buy-card:hover:not(:disabled) { background: #8b5cf6; transform: translateY(-1px); }
+.btn-buy-card:disabled { background: #c4c2d4; box-shadow: 0 3px 0 #9a97ad; cursor: not-allowed; }
+</style>
+
+<script>
+(function() {
+    document.querySelectorAll('.card-shop').forEach(function(card) {
+        var btn = card.querySelector('.btn-buy-card');
+        if (!btn || btn.disabled) return;
+
+        btn.addEventListener('click', function() {
+            var cardType = card.dataset.card;
+            btn.disabled = true;
+            btn.textContent = 'Покупка...';
+
+            var fd = new FormData();
+            fd.append('attack_type', cardType);
+
+            fetch("{% url 'games:tower_buy_attack' tower.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: fd
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    showMsg('Ошибка: ' + data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Купить';
+                    return;
+                }
+                showMsg('✅ Куплено! Идём в бой...', 'success');
+                setTimeout(function() {
+                    window.location.href = "{% url 'games:tower_play' tower.id %}";
+                }, 800);
+            })
+            .catch(function() {
+                showMsg('Ошибка сети');
+                btn.disabled = false;
+                btn.textContent = 'Купить';
+            });
+        });
+    });
+
+    function showMsg(text, type) {
+        type = type || 'danger';
+        var el = document.getElementById('message');
+        el.className = 'alert alert-' + type + ' mt-4 mx-auto';
+        el.style.maxWidth = '500px';
+        el.textContent = text;
+    }
+})();
+</script>
+{% endblock %}

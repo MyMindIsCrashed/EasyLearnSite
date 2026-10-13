@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Ожидание — Атака башни{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+    <div style="font-size: 80px;">⏳</div>
+    <h1 class="fw-bold mb-3">Ожидание соперника</h1>
+    <p class="text-muted">
+        Турнир начнётся, когда учитель запустит бой.<br>
+        Страница обновится автоматически.
+    </p>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4 mt-4 mx-auto" style="max-width: 500px;">
+        <div class="mb-3">
+            <span class="text-muted small">Твоя атака:</span>
+            <div class="fs-5 fw-bold">
+                {% if player.chosen_attack %}
+                    {{ player.get_chosen_attack_display }}
+                {% else %}
+                    🏹 Стрела (по умолчанию)
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <span class="text-muted small">Твой кошелёк:</span>
+            <div class="fs-4 fw-bold text-warning">💰 {{ player.wallet }}</div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{% url 'games:tower_play' tower.id %}" class="btn btn-outline-primary rounded-pill px-4">
+            🔄 Обновить
+        </a>
+    </div>
+</div>
+
+<script>
+setTimeout(function() {
+    window.location.href = "{% url 'games:tower_play' tower.id %}";
+}, 4000);
+</script>
+{% endblock %}

@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
+from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
 from django.http import JsonResponse
@@ -14,6 +15,11 @@ from .models import (
     MONOPOLY_MAP, MONOPOLY_MAX_POSITION,
     CARD_SHIELD, CARD_DOUBLE, CARD_SEVEN, CARD_INFO,
     calc_card_prices,
+    # Атака башни
+    TowerGame, TowerPlayer, TowerMatch,
+    TOWER_ATTACKS, TOWER_ATTACK_PRICES, TOWER_MAX_HP,
+    TOWER_SPECIAL_CHANCE,
+    ATTACK_ARROW, ATTACK_METEOR, ATTACK_FIREBALL, ATTACK_ROCK, ATTACK_LIGHTNING,
 )
 from .forms import QuestionForm
 from scores.models import ScoreTransaction
@@ -55,7 +61,12 @@ def game_create(request):
 def game_manage(request, game_id):
     game = get_object_or_404(Game, pk=game_id, created_by=request.user)
     monopoly = getattr(game, 'monopoly', None)
-    return render(request, 'games/manage.html', {'game': game, 'monopoly': monopoly})
+    tower = getattr(game, 'tower', None)
+    return render(request, 'games/manage.html', {
+        'game': game,
+        'monopoly': monopoly,
+        'tower': tower,
+    })
 
 
 @login_required
@@ -152,6 +163,21 @@ def game_detail(request, game_id):
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
 
+    tower = getattr(game, 'tower', None)
+    if tower:
+        tower_player, _ = TowerPlayer.objects.get_or_create(
+            tower=tower, student=request.user,
+            defaults={'wallet_start': 0},
+        )
+        if tower.status == 'waiting':
+            if not tower_player.chosen_attack and tower_player.wallet_start > 0:
+                return redirect('games:tower_shop', tower_id=tower.id)
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'playing':
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'finished':
+            return redirect('games:tower_results', tower_id=tower.id)
+
     if game.status == 'waiting':
         return render(request, 'games/waiting.html', {'game': game, 'session': session})
     if game.status == 'quiz':
@@ -184,6 +210,21 @@ def game_play(request, game_id):
             return redirect('games:monopoly_play', monopoly_id=monopoly.id)
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
+
+    tower = getattr(game, 'tower', None)
+    if tower:
+        tower_player, _ = TowerPlayer.objects.get_or_create(
+            tower=tower, student=request.user,
+            defaults={'wallet_start': 0},
+        )
+        if tower.status == 'waiting':
+            if not tower_player.chosen_attack and tower_player.wallet_start > 0:
+                return redirect('games:tower_shop', tower_id=tower.id)
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'playing':
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'finished':
+            return redirect('games:tower_results', tower_id=tower.id)
 
     if game.status == 'waiting':
         return redirect('games:detail', game_id=game.id)
@@ -273,6 +314,21 @@ def quiz_done(request, game_id):
             return redirect('games:monopoly_play', monopoly_id=monopoly.id)
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
+
+    tower = getattr(game, 'tower', None)
+    if tower:
+        tower_player, _ = TowerPlayer.objects.get_or_create(
+            tower=tower, student=request.user,
+            defaults={'wallet_start': 0},
+        )
+        if tower.status == 'waiting':
+            if not tower_player.chosen_attack and tower_player.wallet_start > 0:
+                return redirect('games:tower_shop', tower_id=tower.id)
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'playing':
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'finished':
+            return redirect('games:tower_results', tower_id=tower.id)
 
     if game.status == 'maze':
         return redirect('games:maze', game_id=game.id)
@@ -377,6 +433,21 @@ def maze_view(request, game_id):
         if monopoly.status == 'finished':
             return redirect('games:monopoly_results', monopoly_id=monopoly.id)
 
+    tower = getattr(game, 'tower', None)
+    if tower:
+        tower_player, _ = TowerPlayer.objects.get_or_create(
+            tower=tower, student=request.user,
+            defaults={'wallet_start': 0},
+        )
+        if tower.status == 'waiting':
+            if not tower_player.chosen_attack and tower_player.wallet_start > 0:
+                return redirect('games:tower_shop', tower_id=tower.id)
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'playing':
+            return redirect('games:tower_play', tower_id=tower.id)
+        if tower.status == 'finished':
+            return redirect('games:tower_results', tower_id=tower.id)
+
     if game.status == 'waiting':
         return redirect('games:detail', game_id=game.id)
     if game.status == 'quiz':
@@ -414,6 +485,7 @@ def maze_move(request, game_id):
         return JsonResponse({'error': 'already_finished'}, status=400)
 
     COOLDOWN_SECONDS = 3
+    TRAP_SECONDS = 10
     now = timezone.now()
     if session.last_move_at:
         elapsed = (now - session.last_move_at).total_seconds()
@@ -481,6 +553,11 @@ def maze_move(request, game_id):
                 break
             new_row, new_col = nr, nc
 
+            if maze[new_row][new_col] == 4:
+                break
+            if maze[new_row][new_col] == 3:
+                break
+
         if new_row == row and new_col == col:
             return JsonResponse({
                 'error': 'blocked',
@@ -491,9 +568,14 @@ def maze_move(request, game_id):
     session.spent_points += cost
     session.last_move_at = now
 
+    trap_triggered = False
+    trap_duration = 0
+    is_finished = False
+
     if maze[new_row][new_col] == 3:
         session.is_finished = True
         session.finished_at = now
+        is_finished = True
 
         already_finished = GameSession.objects.filter(
             game=game, is_finished=True, finished_at__lt=now,
@@ -502,14 +584,23 @@ def maze_move(request, game_id):
         BONUS_BY_PLACE = {1: 50, 2: 30, 3: 20}
         session.maze_bonus = BONUS_BY_PLACE.get(place, 5)
 
+    elif maze[new_row][new_col] == 4:
+        trap_triggered = True
+        trap_duration = TRAP_SECONDS
+
+        maze[new_row][new_col] = 1
+        session.maze_data = maze
+
     session.save()
 
     return JsonResponse({
         'position': {'row': new_row, 'col': new_col},
         'spent_points': session.spent_points,
         'remaining': session.remaining_points,
-        'is_finished': session.is_finished,
+        'is_finished': is_finished,
         'cooldown': COOLDOWN_SECONDS,
+        'trap_triggered': trap_triggered,
+        'trap_duration': trap_duration,
     })
 
 
@@ -551,7 +642,7 @@ def game_results(request, game_id):
 
 
 # ============================================================
-# МОНОПОЛИЯ
+# МОНОПОЛИЯ (без изменений)
 # ============================================================
 @login_required
 def monopoly_create(request, game_id):
@@ -650,9 +741,6 @@ def monopoly_join(request, game_id):
     return redirect('games:monopoly_shop', monopoly_id=mon.id)
 
 
-# ============================================================
-# МАГАЗИН КАРТ
-# ============================================================
 @login_required
 def monopoly_shop(request, monopoly_id):
     mon = get_object_or_404(MonopolyGame, pk=monopoly_id)
@@ -755,9 +843,6 @@ def monopoly_buy_card(request, monopoly_id):
     })
 
 
-# ============================================================
-# БРОСОК КУБИКА
-# ============================================================
 @login_required
 @require_POST
 def monopoly_roll(request, monopoly_id):
@@ -845,13 +930,12 @@ def monopoly_roll(request, monopoly_id):
         player.last_event = '🔄 Обмен местами'
         final_cell_type = MONOPOLY_MAP[final_pos]['type']
 
-    # ============ ФИНИШ (как в старой логике) ============
     if final_cell_type == 'finish' or player.position >= MONOPOLY_MAX_POSITION:
         player.position = MONOPOLY_MAX_POSITION
         player.is_finished = True
         player.finished_at = timezone.now()
         player.last_event = '🏆 ФИНИШ!'
-        mon.status = 'finished'          # игра завершается сразу
+        mon.status = 'finished'
         mon.finished_at = timezone.now()
         mon.save()
         ScoreTransaction.objects.create(
@@ -866,14 +950,12 @@ def monopoly_roll(request, monopoly_id):
         player.card_used = True
         player.has_extra_turn = True
 
-    # Счётчик ходов игрока (для анимации у других клиентов)
     player.move_seq += 1
     player.save()
 
     if mon.status == 'playing' and not player.has_extra_turn:
         mon.next_turn()
 
-    # Версия состояния — все клиенты увидят изменение
     mon.bump_version()
 
     return JsonResponse({
@@ -917,8 +999,8 @@ def monopoly_state(request, monopoly_id):
                 'id': p.id,
                 'name': p.student.get_full_name() or p.student.username,
                 'username': p.student.username,
-                'emoji': p.student.avatar_emoji or '🧑',
-                'avatar': p.student.avatar.url if p.student.avatar else None,
+                'emoji': getattr(p.student, 'avatar_emoji', None) or '🧑',
+                'avatar': p.student.avatar.url if getattr(p.student, 'avatar', None) else None,
                 'position': p.position,
                 'dice_value': p.dice_value,
                 'last_event': p.last_event,
@@ -976,5 +1058,406 @@ def monopoly_results(request, monopoly_id):
 
     return render(request, 'games/monopoly_results.html', {
         'monopoly': mon,
+        'players': players,
+    })
+
+
+# ============================================================
+# АТАКА БАШНИ
+# ============================================================
+@login_required
+def tower_create(request, game_id):
+    game = get_object_or_404(Game, pk=game_id, created_by=request.user)
+
+    if hasattr(game, 'tower'):
+        messages.info(request, 'Турнир уже создан')
+        return redirect('games:tower_host', tower_id=game.tower.id)
+
+    if game.sessions.count() < 2:
+        messages.error(request, 'Нужно минимум 2 ученика')
+        return redirect('games:manage', game_id=game.id)
+
+    if game.sessions.count() > 16:
+        messages.error(request, 'Максимум 16 учеников')
+        return redirect('games:manage', game_id=game.id)
+
+    tower = TowerGame.objects.create(game=game, status='waiting')
+
+    sessions = game.sessions.all().order_by('joined_at')
+    for s in sessions:
+        quiz_score = StudentAnswer.objects.filter(
+            student=s.student, question__game=game, is_correct=True
+        ).aggregate(t=Sum('question__points'))['t'] or 0
+
+        TowerPlayer.objects.create(
+            tower=tower, student=s.student,
+            wallet_start=quiz_score,
+        )
+
+    messages.success(request, 'Турнир создан!')
+    return redirect('games:tower_host', tower_id=tower.id)
+
+
+@login_required
+def tower_join(request, game_id):
+    if not request.user.is_student():
+        return redirect('games:list')
+
+    game = get_object_or_404(Game, pk=game_id)
+    if not hasattr(game, 'tower'):
+        messages.error(request, 'Турнир не создан')
+        return redirect('games:detail', game_id=game.id)
+
+    tower = game.tower
+
+    quiz_score = StudentAnswer.objects.filter(
+        student=request.user, question__game=game, is_correct=True
+    ).aggregate(t=Sum('question__points'))['t'] or 0
+
+    TowerPlayer.objects.get_or_create(
+        tower=tower, student=request.user,
+        defaults={'wallet_start': quiz_score},
+    )
+
+    messages.success(request, 'Вы подключились к турниру!')
+    return redirect('games:tower_play', tower_id=tower.id)
+
+
+@login_required
+def tower_shop(request, tower_id):
+    """Магазин спецатак (покупается ДО турнира)."""
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    if not request.user.is_student():
+        return redirect('games:list')
+
+    player, _ = TowerPlayer.objects.get_or_create(
+        tower=tower, student=request.user,
+        defaults={'wallet_start': 0},
+    )
+
+    if player.chosen_attack or tower.status != 'waiting':
+        return redirect('games:tower_play', tower_id=tower.id)
+
+    max_score = tower.game.questions.aggregate(s=Sum('points'))['s'] or 0
+    if max_score == 0:
+        max_score = 10
+
+    quiz_score = StudentAnswer.objects.filter(
+        student=request.user, question__game=tower.game, is_correct=True
+    ).aggregate(t=Sum('question__points'))['t'] or 0
+
+    if player.wallet_start != quiz_score:
+        player.wallet_start = quiz_score
+        player.save()
+
+    cards = []
+    for attack_id in [ATTACK_METEOR, ATTACK_FIREBALL, ATTACK_ROCK, ATTACK_LIGHTNING]:
+        info = TOWER_ATTACKS[attack_id]
+        percent = TOWER_ATTACK_PRICES[attack_id]
+        price = max(5, int(round(max_score * percent / 100)))
+        cards.append({
+            'id': attack_id,
+            'name': info['name'],
+            'emoji': info['emoji'],
+            'desc': info['desc'],
+            'damage': info['damage'],
+            'price': price,
+            'percent': percent,
+            'affordable': player.wallet >= price,
+        })
+
+    return render(request, 'games/tower_shop.html', {
+        'tower': tower,
+        'player': player,
+        'cards': cards,
+        'wallet': player.wallet,
+        'max_score': max_score,
+        'game': tower.game,
+        'special_chance': TOWER_SPECIAL_CHANCE,
+    })
+
+
+@login_required
+@require_POST
+def tower_buy_attack(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    if not request.user.is_student():
+        return JsonResponse({'error': 'not_student'}, status=400)
+
+    player = get_object_or_404(TowerPlayer, tower=tower, student=request.user)
+
+    if player.chosen_attack:
+        return JsonResponse({'error': 'already_bought'}, status=400)
+
+    attack_type = request.POST.get('attack_type', '')
+    if attack_type not in TOWER_ATTACK_PRICES:
+        return JsonResponse({'error': 'invalid_attack'}, status=400)
+
+    max_score = tower.game.questions.aggregate(s=Sum('points'))['s'] or 10
+    percent = TOWER_ATTACK_PRICES[attack_type]
+    price = max(5, int(round(max_score * percent / 100)))
+
+    if player.wallet < price:
+        return JsonResponse({
+            'error': 'not_enough_points',
+            'wallet': player.wallet,
+            'price': price,
+        }, status=400)
+
+    player.points_spent += price
+    player.chosen_attack = attack_type
+    player.save()
+
+    ScoreTransaction.objects.create(
+        student=request.user,
+        teacher=tower.game.created_by,
+        points=-price,
+        reason='manual',
+        comment=f'🏰 Спецатака: {TOWER_ATTACKS[attack_type]["name"]}',
+    )
+
+    tower.bump_version()
+
+    return JsonResponse({
+        'ok': True,
+        'attack_type': attack_type,
+        'wallet_after': player.wallet,
+    })
+
+
+@login_required
+def tower_play(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+
+    if tower.status == 'finished':
+        return redirect('games:tower_results', tower_id=tower.id)
+
+    player, _ = TowerPlayer.objects.get_or_create(
+        tower=tower, student=request.user,
+        defaults={'wallet_start': 0},
+    )
+
+    # Если ещё в магазине
+    if tower.status == 'waiting' and not player.chosen_attack and player.wallet_start > 0:
+        return redirect('games:tower_shop', tower_id=tower.id)
+
+    if tower.status == 'waiting':
+        return render(request, 'games/tower_waiting.html', {
+            'tower': tower, 'player': player,
+        })
+
+    my_match = tower.matches.filter(
+        status__in=['ready', 'playing'],
+    ).filter(
+        models.Q(player1=player) | models.Q(player2=player)
+    ).order_by('round_number', 'match_index').first()
+
+    if my_match and my_match.status == 'playing':
+        return render(request, 'games/tower_play.html', {
+            'tower': tower,
+            'player': player,
+            'match': my_match,
+            'max_hp': TOWER_MAX_HP,
+            'special_attack': player.chosen_attack,
+            'special_attack_info': TOWER_ATTACKS.get(player.chosen_attack) if player.chosen_attack else None,
+            'special_chance': TOWER_SPECIAL_CHANCE,
+        })
+
+    return render(request, 'games/tower_waiting.html', {
+        'tower': tower, 'player': player,
+    })
+
+
+@login_required
+@require_POST
+def tower_attack(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id, status='playing')
+    player = get_object_or_404(TowerPlayer, tower=tower, student=request.user)
+
+    match = tower.matches.filter(
+        status='playing'
+    ).filter(
+        models.Q(player1=player) | models.Q(player2=player)
+    ).first()
+
+    if not match:
+        return JsonResponse({'error': 'no_active_match'}, status=400)
+
+    result = match.do_attack(player)
+    if 'error' in result:
+        return JsonResponse(result, status=400)
+
+    return JsonResponse(result)
+
+
+@login_required
+def tower_host(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    if tower.game.created_by != request.user:
+        messages.error(request, 'Нет доступа')
+        return redirect('games:list')
+
+    players = list(tower.players.all())
+    matches = list(tower.all_matches())
+
+    rounds = {}
+    for m in matches:
+        rounds.setdefault(m.round_number, []).append(m)
+
+    current_match = tower.current_match()
+
+    return render(request, 'games/tower_host.html', {
+        'tower': tower,
+        'game': tower.game,
+        'players': players,
+        'rounds': rounds,
+        'current_match': current_match,
+    })
+
+
+@login_required
+@require_POST
+def tower_start(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    if tower.game.created_by != request.user:
+        return redirect('games:list')
+
+    if tower.players.count() < 2:
+        messages.error(request, 'Нужно минимум 2 игрока')
+        return redirect('games:tower_host', tower_id=tower.id)
+
+    if tower.matches.exists():
+        messages.info(request, 'Сетка уже построена')
+        return redirect('games:tower_host', tower_id=tower.id)
+
+    tower.build_bracket()
+    messages.success(request, 'Турнир начался!')
+    return redirect('games:tower_host', tower_id=tower.id)
+
+
+@login_required
+@require_POST
+def tower_next_match(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    if tower.game.created_by != request.user:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    if tower.status != 'playing':
+        return JsonResponse({'error': 'not_playing'}, status=400)
+
+    m = tower.matches.filter(
+        status='ready',
+        player1__isnull=False,
+        player2__isnull=False,
+    ).order_by('round_number', 'match_index').first()
+
+    if not m:
+        if not tower.matches.exclude(status='finished').exists():
+            tower.check_finished()
+            return JsonResponse({'error': 'tournament_finished'}, status=400)
+        return JsonResponse({'error': 'no_ready_matches'}, status=400)
+
+    m.status = 'playing'
+    m.started_at = timezone.now()
+    m.hp1 = TOWER_MAX_HP
+    m.hp2 = TOWER_MAX_HP
+    m.turn = 1
+    m.log = []
+    m.winner = None
+    m.save()
+    tower.bump_version()
+
+    return JsonResponse({'ok': True, 'match_id': m.id})
+
+
+@login_required
+def tower_state(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    players = list(tower.players.all())
+    current_match = tower.current_match()
+
+    me = next((p for p in players if p.student_id == request.user.id), None)
+
+    matches_data = []
+    for m in tower.all_matches():
+        matches_data.append({
+            'id': m.id,
+            'round': m.round_number,
+            'round_name': m.round_name,
+            'index': m.match_index,
+            'status': m.status,
+            'player1_id': m.player1_id,
+            'player1_name': (m.player1.student.get_full_name() or m.player1.student.username) if m.player1 else None,
+            'player2_id': m.player2_id,
+            'player2_name': (m.player2.student.get_full_name() or m.player2.student.username) if m.player2 else None,
+            'hp1': m.hp1,
+            'hp2': m.hp2,
+            'turn': m.turn,
+            'winner_id': m.winner_id,
+            'is_bye': m.is_bye,
+        })
+
+    match_data = None
+    if current_match:
+        is_in_match = False
+        my_side = 0
+        if me:
+            if current_match.player1_id == me.id:
+                is_in_match = True
+                my_side = 1
+            elif current_match.player2_id == me.id:
+                is_in_match = True
+                my_side = 2
+
+        match_data = {
+            'id': current_match.id,
+            'status': current_match.status,
+            'player1_id': current_match.player1_id,
+            'player1_name': (current_match.player1.student.get_full_name() or current_match.player1.student.username) if current_match.player1 else None,
+            'player2_id': current_match.player2_id,
+            'player2_name': (current_match.player2.student.get_full_name() or current_match.player2.student.username) if current_match.player2 else None,
+            'hp1': current_match.hp1,
+            'hp2': current_match.hp2,
+            'turn': current_match.turn,
+            'is_in_match': is_in_match,
+            'my_side': my_side,
+            'round_name': current_match.round_name,
+            'log': (current_match.log or [])[-10:],
+        }
+
+    return JsonResponse({
+        'status': tower.status,
+        'state_version': tower.state_version,
+        'current_round': tower.current_round(),
+        'players': [
+            {
+                'id': p.id,
+                'name': p.student.get_full_name() or p.student.username,
+                'username': p.student.username,
+                'emoji': getattr(p.student, 'avatar_emoji', None) or '🧑',
+                'avatar': p.student.avatar.url if getattr(p.student, 'avatar', None) else None,
+                'chosen_attack': p.chosen_attack,
+                'is_eliminated': p.is_eliminated,
+                'is_winner': p.is_winner,
+            }
+            for p in players
+        ],
+        'matches': matches_data,
+        'current_match': match_data,
+        'my_id': me.id if me else None,
+    })
+
+
+@login_required
+def tower_results(request, tower_id):
+    tower = get_object_or_404(TowerGame, pk=tower_id)
+    players = list(tower.players.all())
+    players.sort(key=lambda p: (
+        not p.is_winner,
+        p.is_eliminated,
+    ))
+
+    return render(request, 'games/tower_results.html', {
+        'tower': tower,
         'players': players,
     })
