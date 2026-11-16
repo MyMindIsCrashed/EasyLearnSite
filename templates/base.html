@@ -1,6 +1,7 @@
 {% load static %}
+{% load i18n %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,78 +19,34 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
     <style>
-    /* ============================================================
-       БОКОВЫЕ ДЕКОРАЦИИ — разные фигурки по краям
-       ============================================================ */
-    html, body {
-        min-height: 100%;
-    }
-
-    body {
-        position: relative;
-        background-color: #f7f8fc;
-        min-height: 100vh;
-        overflow-x: hidden;
-    }
-
-    .side-decor {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        width: 150px;
-        pointer-events: none;
-        z-index: 0;
-        opacity: 0.55;
-    }
-
+    html, body { min-height: 100%; }
+    body { position: relative; background-color: #f7f8fc; min-height: 100vh; overflow-x: hidden; }
+    .side-decor { position: fixed; top: 0; bottom: 0; width: 150px; pointer-events: none; z-index: 0; opacity: 0.55; }
     .side-decor--left  { left: 0; }
     .side-decor--right { right: 0; }
-
-    .side-decor svg {
-        position: absolute;
-        display: block;
-    }
-
-    /* --- ЛЕВАЯ КОЛОНКА: ракета, треугольник, звезда, круг, ромб, молния --- */
-    .side-decor--left  .d1 { top: 10%; left: 34px; width: 42px; height: 42px; }  /* ракета */
-    .side-decor--left  .d2 { top: 26%; left: 48px; width: 30px; height: 30px; }  /* треугольник вправо */
-    .side-decor--left  .d3 { top: 42%; left: 30px; width: 34px; height: 34px; }  /* звезда */
-    .side-decor--left  .d4 { top: 56%; left: 58px; width: 16px; height: 16px; }  /* кружок */
-    .side-decor--left  .d5 { top: 70%; left: 40px; width: 28px; height: 28px; }  /* ромб */
-    .side-decor--left  .d6 { top: 86%; left: 46px; width: 32px; height: 32px; }  /* молния */
-
-    /* --- ПРАВАЯ КОЛОНКА: молния, ромб, звезда, круг, ракета, треугольник --- */
-    .side-decor--right .d1 { top: 12%; right: 42px; width: 30px; height: 30px; } /* молния */
-    .side-decor--right .d2 { top: 28%; right: 32px; width: 26px; height: 26px; } /* ромб */
-    .side-decor--right .d3 { top: 44%; right: 52px; width: 32px; height: 32px; } /* звезда */
-    .side-decor--right .d4 { top: 58%; right: 34px; width: 16px; height: 16px; } /* кружок */
-    .side-decor--right .d5 { top: 72%; right: 44px; width: 38px; height: 38px; } /* ракета */
-    .side-decor--right .d6 { top: 88%; right: 36px; width: 28px; height: 28px; } /* треугольник влево */
-
-    body > * {
-        position: relative;
-        z-index: 1;
-    }
-
-    .navbar {
-        z-index: 1030;
-    }
-
-    @media (max-width: 992px) {
-        .side-decor { display: none; }
-    }
+    .side-decor svg { position: absolute; display: block; }
+    .side-decor--left  .d1 { top: 10%; left: 34px; width: 42px; height: 42px; }
+    .side-decor--left  .d2 { top: 26%; left: 48px; width: 30px; height: 30px; }
+    .side-decor--left  .d3 { top: 42%; left: 30px; width: 34px; height: 34px; }
+    .side-decor--left  .d4 { top: 56%; left: 58px; width: 16px; height: 16px; }
+    .side-decor--left  .d5 { top: 70%; left: 40px; width: 28px; height: 28px; }
+    .side-decor--left  .d6 { top: 86%; left: 46px; width: 32px; height: 32px; }
+    .side-decor--right .d1 { top: 12%; right: 42px; width: 30px; height: 30px; }
+    .side-decor--right .d2 { top: 28%; right: 32px; width: 26px; height: 26px; }
+    .side-decor--right .d3 { top: 44%; right: 52px; width: 32px; height: 32px; }
+    .side-decor--right .d4 { top: 58%; right: 34px; width: 16px; height: 16px; }
+    .side-decor--right .d5 { top: 72%; right: 44px; width: 38px; height: 38px; }
+    .side-decor--right .d6 { top: 88%; right: 36px; width: 28px; height: 28px; }
+    body > * { position: relative; z-index: 1; }
+    .navbar { z-index: 1030; }
+    @media (max-width: 992px) { .side-decor { display: none; } }
     </style>
 
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<!-- ========================= -->
-<!-- ЛЕВАЯ КОЛОНКА             -->
-<!-- ========================= -->
 <div class="side-decor side-decor--left" aria-hidden="true">
-
-    <!-- 🚀 Ракета -->
     <svg class="d1" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
         <path d="M24 4 C28 12 30 20 30 28 L18 28 C18 20 20 12 24 4 Z" fill="#c7cdea"/>
         <circle cx="24" cy="16" r="3" fill="#f7f8fc"/>
@@ -97,59 +54,36 @@
         <path d="M30 28 L36 38 L30 36 Z" fill="#c7cdea"/>
         <path d="M22 34 L24 44 L26 34 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ▲ Треугольник вправо -->
     <svg class="d2" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M10 6 L34 20 L10 34 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ★ Звезда -->
     <svg class="d3" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M20 3 L24.5 15 L38 15 L27 23.5 L31 36 L20 28 L9 36 L13 23.5 L2 15 L15.5 15 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ● Кружок -->
     <svg class="d4" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <circle cx="20" cy="20" r="16" fill="#c7cdea"/>
     </svg>
-
-    <!-- ◆ Ромб -->
     <svg class="d5" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M20 4 L36 20 L20 36 L4 20 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ⚡ Молния -->
     <svg class="d6" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M22 3 L10 22 L18 22 L15 37 L30 17 L22 17 Z" fill="#c7cdea"/>
     </svg>
 </div>
 
-<!-- ========================= -->
-<!-- ПРАВАЯ КОЛОНКА            -->
-<!-- ========================= -->
 <div class="side-decor side-decor--right" aria-hidden="true">
-
-    <!-- ⚡ Молния -->
     <svg class="d1" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M22 3 L10 22 L18 22 L15 37 L30 17 L22 17 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ◆ Ромб -->
     <svg class="d2" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M20 4 L36 20 L20 36 L4 20 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ★ Звезда -->
     <svg class="d3" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M20 3 L24.5 15 L38 15 L27 23.5 L31 36 L20 28 L9 36 L13 23.5 L2 15 L15.5 15 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ● Кружок -->
     <svg class="d4" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <circle cx="20" cy="20" r="16" fill="#c7cdea"/>
     </svg>
-
-    <!-- 🚀 Ракета -->
     <svg class="d5" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
         <path d="M24 4 C28 12 30 20 30 28 L18 28 C18 20 20 12 24 4 Z" fill="#c7cdea"/>
         <circle cx="24" cy="16" r="3" fill="#f7f8fc"/>
@@ -157,8 +91,6 @@
         <path d="M30 28 L36 38 L30 36 Z" fill="#c7cdea"/>
         <path d="M22 34 L24 44 L26 34 Z" fill="#c7cdea"/>
     </svg>
-
-    <!-- ◀ Треугольник влево -->
     <svg class="d6" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <path d="M30 6 L6 20 L30 34 Z" fill="#c7cdea"/>
     </svg>
@@ -177,15 +109,43 @@
 
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+
+                {# --- ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА --- #}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-globe2"></i>
+                        {% get_current_language as CURRENT_LANG %}
+                        {% if CURRENT_LANG == 'ky' %}КЫ{% else %}РУ{% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                        <li>
+                            <form action="{% url 'set_language' %}" method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="language" value="ru">
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="dropdown-item {% if CURRENT_LANG == 'ru' %}active{% endif %}">🇷🇺 Русский</button>
+                            </form>
+                        </li>
+                        <li>
+                            <form action="{% url 'set_language' %}" method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="language" value="ky">
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="dropdown-item {% if CURRENT_LANG == 'ky' %}active{% endif %}">🇰🇬 Кыргызча</button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
+
                 {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'games:list' %}">
-                            <i class="bi bi-controller"></i> Игры
+                            <i class="bi bi-controller"></i> {% trans "Игры" %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'scores:leaderboard' %}">
-                            <i class="bi bi-trophy-fill text-warning"></i> Лидеры
+                            <i class="bi bi-trophy-fill text-warning"></i> {% trans "Лидеры" %}
                         </a>
                     </li>
                     <li class="nav-item dropdown">
@@ -196,13 +156,13 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
                             <li>
                                 <a class="dropdown-item" href="{% url 'accounts:profile' %}">
-                                    <i class="bi bi-person-circle"></i> Мой кабинет
+                                    <i class="bi bi-person-circle"></i> {% trans "Мой кабинет" %}
                                 </a>
                             </li>
                             {% if user.is_teacher %}
                             <li>
                                 <a class="dropdown-item" href="/admin/">
-                                    <i class="bi bi-shield-lock"></i> Админка
+                                    <i class="bi bi-shield-lock"></i> {% trans "Админка" %}
                                 </a>
                             </li>
                             {% endif %}
@@ -211,7 +171,7 @@
                                 <form method="post" action="{% url 'logout' %}">
                                     {% csrf_token %}
                                     <button class="dropdown-item text-danger" type="submit">
-                                        <i class="bi bi-box-arrow-right"></i> Выйти
+                                        <i class="bi bi-box-arrow-right"></i> {% trans "Выйти" %}
                                     </button>
                                 </form>
                             </li>
@@ -220,12 +180,12 @@
                 {% else %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'login' %}">
-                            <i class="bi bi-box-arrow-in-right"></i> Войти
+                            <i class="bi bi-box-arrow-in-right"></i> {% trans "Войти" %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="btn btn-primary rounded-pill px-4 fw-semibold" href="{% url 'accounts:signup' %}">
-                            Начать бесплатно
+                            {% trans "Начать бесплатно" %}
                         </a>
                     </li>
                 {% endif %}
@@ -259,8 +219,7 @@
                     <span class="brand-text text-white">EasyLearnSite</span>
                 </div>
                 <p class="text-white-50 mb-3">
-                    Превращаем уроки и семинары в игры. Ученикам и студентам интересно,
-                    преподавателям — удобно.
+                    {% blocktrans %}Превращаем уроки и семинары в игры. Ученикам и студентам интересно, преподавателям — удобно.{% endblocktrans %}
                 </p>
                 <div class="footer-socials">
                     <a href="#" title="Telegram"><i class="bi bi-telegram"></i></a>
@@ -271,34 +230,34 @@
             </div>
 
             <div class="col-6 col-lg-2">
-                <h6 class="footer-heading">Платформа</h6>
+                <h6 class="footer-heading">{% trans "Платформа" %}</h6>
                 <ul class="list-unstyled footer-links">
-                    <li><a href="/"><i class="bi bi-house"></i> Главная</a></li>
-                    <li><a href="{% url 'games:list' %}"><i class="bi bi-controller"></i> Игры</a></li>
-                    <li><a href="{% url 'scores:leaderboard' %}"><i class="bi bi-trophy"></i> Лидеры</a></li>
+                    <li><a href="/"><i class="bi bi-house"></i> {% trans "Главная" %}</a></li>
+                    <li><a href="{% url 'games:list' %}"><i class="bi bi-controller"></i> {% trans "Игры" %}</a></li>
+                    <li><a href="{% url 'scores:leaderboard' %}"><i class="bi bi-trophy"></i> {% trans "Лидеры" %}</a></li>
                 </ul>
             </div>
 
             <div class="col-6 col-lg-2">
-                <h6 class="footer-heading">Для кого</h6>
+                <h6 class="footer-heading">{% trans "Для кого" %}</h6>
                 <ul class="list-unstyled footer-links">
-                    <li><a href="{% url 'accounts:signup' %}?role=student"><i class="bi bi-mortarboard"></i> Ученикам</a></li>
-                    <li><a href="{% url 'accounts:signup' %}?role=teacher"><i class="bi bi-person-workspace"></i> Преподавателям</a></li>
-                    <li><a href="#"><i class="bi bi-buildings"></i> Школам и вузам</a></li>
+                    <li><a href="{% url 'accounts:signup' %}?role=student"><i class="bi bi-mortarboard"></i> {% trans "Ученикам" %}</a></li>
+                    <li><a href="{% url 'accounts:signup' %}?role=teacher"><i class="bi bi-person-workspace"></i> {% trans "Преподавателям" %}</a></li>
+                    <li><a href="#"><i class="bi bi-buildings"></i> {% trans "Школам и вузам" %}</a></li>
                 </ul>
             </div>
 
             <div class="col-6 col-lg-2">
-                <h6 class="footer-heading">Помощь</h6>
+                <h6 class="footer-heading">{% trans "Помощь" %}</h6>
                 <ul class="list-unstyled footer-links">
-                    <li><a href="#"><i class="bi bi-question-circle"></i> Как играть</a></li>
-                    <li><a href="#"><i class="bi bi-book"></i> Инструкция</a></li>
-                    <li><a href="#"><i class="bi bi-envelope"></i> Связаться</a></li>
+                    <li><a href="#"><i class="bi bi-question-circle"></i> {% trans "Как играть" %}</a></li>
+                    <li><a href="#"><i class="bi bi-book"></i> {% trans "Инструкция" %}</a></li>
+                    <li><a href="#"><i class="bi bi-envelope"></i> {% trans "Связаться" %}</a></li>
                 </ul>
             </div>
 
             <div class="col-6 col-lg-2">
-                <h6 class="footer-heading">Контакты</h6>
+                <h6 class="footer-heading">{% trans "Контакты" %}</h6>
                 <ul class="list-unstyled footer-links">
                     <li>
                         <a href="mailto:hello@easylearnsite.com">
@@ -320,14 +279,14 @@
         <div class="footer-bottom">
             <div class="row align-items-center g-2">
                 <div class="col-md-6 text-center text-md-start">
-                    © 2025 EasyLearnSite. Сделано с
+                    {% blocktrans %}© 2025 EasyLearnSite. Сделано с{% endblocktrans %}
                     <i class="bi bi-heart-fill text-danger"></i>
-                    для школьников и студентов.
+                    {% trans "для школьников и студентов." %}
                 </div>
                 <div class="col-md-6 text-center text-md-end">
-                    <a href="#" class="footer-bottom-link">Политика конфиденциальности</a>
+                    <a href="#" class="footer-bottom-link">{% trans "Политика конфиденциальности" %}</a>
                     <span class="footer-dot">·</span>
-                    <a href="#" class="footer-bottom-link">Условия использования</a>
+                    <a href="#" class="footer-bottom-link">{% trans "Условия использования" %}</a>
                 </div>
             </div>
         </div>
@@ -339,12 +298,10 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const reveals = document.querySelectorAll('.reveal');
-
         if (!('IntersectionObserver' in window)) {
             reveals.forEach(el => el.classList.add('visible'));
             return;
         }
-
         const initiallyVisible = [];
         reveals.forEach(el => {
             const rect = el.getBoundingClientRect();
@@ -352,11 +309,9 @@
                 initiallyVisible.push(el);
             }
         });
-
         initiallyVisible.forEach((el, i) => {
             setTimeout(() => el.classList.add('visible'), 120 + i * 90);
         });
-
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -364,15 +319,9 @@
                     observer.unobserve(entry.target);
                 }
             });
-        }, {
-            threshold: 0.15,
-            rootMargin: '0px 0px -60px 0px'
-        });
-
+        }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
         reveals.forEach(el => {
-            if (!initiallyVisible.includes(el)) {
-                observer.observe(el);
-            }
+            if (!initiallyVisible.includes(el)) observer.observe(el);
         });
     });
 </script>

@@ -1,4 +1,5 @@
 import random
+from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
@@ -40,7 +41,7 @@ def game_list(request):
 @login_required
 def game_create(request):
     if not request.user.is_teacher():
-        messages.error(request, 'Только учитель может создавать игры')
+        messages.error(request, _('Только учитель может создавать игры'))
         return redirect('games:list')
 
     from accounts.models import SchoolClass
@@ -50,7 +51,7 @@ def game_create(request):
         class_id = request.POST.get('school_class')
         school_class = get_object_or_404(SchoolClass, pk=class_id, teacher=request.user)
         game = Game.objects.create(title=title, school_class=school_class, created_by=request.user)
-        messages.success(request, f'Игра создана! PIN-код: {game.pin_code}')
+        messages.success(request, _('Игра создана! PIN-код: %(pin)s') % {'pin': game.pin_code})
         return redirect('games:manage', game_id=game.id)
 
     classes = SchoolClass.objects.filter(teacher=request.user)
@@ -73,14 +74,14 @@ def game_manage(request, game_id):
 def start_quiz(request, game_id):
     game = get_object_or_404(Game, pk=game_id, created_by=request.user)
     if game.questions.count() < 3:
-        messages.error(request, f'Минимум 3 вопроса. Сейчас: {game.questions.count()}')
+        messages.error(request, _('Минимум 3 вопроса. Сейчас: %(n)s') % {'n': game.questions.count()})
         return redirect('games:manage', game_id=game.id)
 
     game.status = 'quiz'
     game.is_active = True
     game.started_at = timezone.now()
     game.save()
-    messages.success(request, 'Квиз запущен!')
+    messages.success(request, _('Квиз запущен!'))
     return redirect('games:manage', game_id=game.id)
 
 
@@ -101,7 +102,7 @@ def start_maze(request, game_id):
         session.save()
         session.generate_personal_maze()
 
-    messages.success(request, 'Этап лабиринта начался!')
+    messages.success(request, _('Этап лабиринта начался!'))
     return redirect('games:manage', game_id=game.id)
 
 
@@ -118,18 +119,18 @@ def game_join(request):
         try:
             game = Game.objects.get(pin_code=pin, status__in=['waiting', 'quiz', 'maze'])
         except Game.DoesNotExist:
-            messages.error(request, 'Игра с таким PIN не найдена')
+            messages.error(request, _('Игра с таким PIN не найдена'))
             return render(request, 'games/join.html')
 
         if game.school_class != request.user.school_class:
-            messages.error(request, 'Эта игра не для вашего класса')
+            messages.error(request, _('Эта игра не для вашего класса'))
             return render(request, 'games/join.html')
 
         GameSession.objects.get_or_create(
             game=game, student=request.user,
             defaults={'position': {'row': 1, 'col': 1}}
         )
-        messages.success(request, f'Вы подключились к игре «{game.title}»')
+        messages.success(request, _('Вы подключились к игре «%(title)s»') % {'title': game.title})
         return redirect('games:detail', game_id=game.id)
 
     return render(request, 'games/join.html')
@@ -147,12 +148,12 @@ def game_detail(request, game_id):
 
     session = GameSession.objects.filter(game=game, student=request.user).first()
     if not session:
-        messages.info(request, 'Сначала введите PIN-код')
+        messages.info(request, _('Сначала введите PIN-код'))
         return redirect('games:join')
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        player, _ = MonopolyPlayer.objects.get_or_create(
+        player, _created = MonopolyPlayer.objects.get_or_create(
             monopoly=monopoly, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -165,7 +166,7 @@ def game_detail(request, game_id):
 
     tower = getattr(game, 'tower', None)
     if tower:
-        tower_player, _ = TowerPlayer.objects.get_or_create(
+        tower_player, _created = TowerPlayer.objects.get_or_create(
             tower=tower, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -200,7 +201,7 @@ def game_play(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        player, _ = MonopolyPlayer.objects.get_or_create(
+        player, _created = MonopolyPlayer.objects.get_or_create(
             monopoly=monopoly, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -213,7 +214,7 @@ def game_play(request, game_id):
 
     tower = getattr(game, 'tower', None)
     if tower:
-        tower_player, _ = TowerPlayer.objects.get_or_create(
+        tower_player, _created = TowerPlayer.objects.get_or_create(
             tower=tower, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -273,7 +274,7 @@ def answer_question(request, question_id):
             teacher=question.game.created_by,
             points=question.points,
             reason='quiz',
-            comment=f'Верный ответ: {question.text[:40]}'
+            comment=_('Верный ответ: %(text)s') % {'text': question.text[:40]},
         )
 
     correct_option = question.options.filter(is_correct=True).first()
@@ -304,7 +305,7 @@ def quiz_done(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        player, _ = MonopolyPlayer.objects.get_or_create(
+        player, _created = MonopolyPlayer.objects.get_or_create(
             monopoly=monopoly, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -317,7 +318,7 @@ def quiz_done(request, game_id):
 
     tower = getattr(game, 'tower', None)
     if tower:
-        tower_player, _ = TowerPlayer.objects.get_or_create(
+        tower_player, _created = TowerPlayer.objects.get_or_create(
             tower=tower, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -367,7 +368,7 @@ def question_add(request, game_id):
         form = QuestionForm(request.POST, game=game)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Вопрос добавлен!')
+            messages.success(request, _('Вопрос добавлен!'))
             return redirect('games:manage', game_id=game.id)
     else:
         form = QuestionForm(game=game)
@@ -381,13 +382,13 @@ def question_edit(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     game = question.game
     if game.created_by != request.user:
-        messages.error(request, 'Нет доступа')
+        messages.error(request, _('Нет доступа'))
         return redirect('games:list')
     if request.method == 'POST':
         form = QuestionForm(request.POST, instance=question, game=game)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Вопрос обновлён!')
+            messages.success(request, _('Вопрос обновлён!'))
             return redirect('games:manage', game_id=game.id)
     else:
         form = QuestionForm(instance=question, game=game)
@@ -402,10 +403,10 @@ def question_delete(request, question_id):
     question = get_object_or_404(Question, pk=question_id)
     game = question.game
     if game.created_by != request.user:
-        messages.error(request, 'Нет доступа')
+        messages.error(request, _('Нет доступа'))
         return redirect('games:list')
     question.delete()
-    messages.success(request, 'Вопрос удалён')
+    messages.success(request, _('Вопрос удалён'))
     return redirect('games:manage', game_id=game.id)
 
 
@@ -422,7 +423,7 @@ def maze_view(request, game_id):
 
     monopoly = getattr(game, 'monopoly', None)
     if monopoly:
-        player, _ = MonopolyPlayer.objects.get_or_create(
+        player, _created = MonopolyPlayer.objects.get_or_create(
             monopoly=monopoly, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -435,7 +436,7 @@ def maze_view(request, game_id):
 
     tower = getattr(game, 'tower', None)
     if tower:
-        tower_player, _ = TowerPlayer.objects.get_or_create(
+        tower_player, _created = TowerPlayer.objects.get_or_create(
             tower=tower, student=request.user,
             defaults={'wallet_start': 0},
         )
@@ -546,7 +547,7 @@ def maze_move(request, game_id):
                 return False
             return maze[r][c] != 0
 
-        for _ in range(STEPS[action]):
+        for _step in range(STEPS[action]):
             nr = new_row + delta[0]
             nc = new_col + delta[1]
             if not is_walkable(nr, nc):
@@ -642,18 +643,18 @@ def game_results(request, game_id):
 
 
 # ============================================================
-# МОНОПОЛИЯ (без изменений)
+# МОНОПОЛИЯ
 # ============================================================
 @login_required
 def monopoly_create(request, game_id):
     game = get_object_or_404(Game, pk=game_id, created_by=request.user)
 
     if hasattr(game, 'monopoly'):
-        messages.info(request, 'Партия уже создана')
+        messages.info(request, _('Партия уже создана'))
         return redirect('games:monopoly_host', monopoly_id=game.monopoly.id)
 
     if game.sessions.count() < 2:
-        messages.error(request, 'Нужно минимум 2 ученика в игре')
+        messages.error(request, _('Нужно минимум 2 ученика в игре'))
         return redirect('games:manage', game_id=game.id)
 
     mon = MonopolyGame.objects.create(game=game, status='waiting')
@@ -671,7 +672,7 @@ def monopoly_create(request, game_id):
             has_extra_turn=False,
         )
 
-    messages.success(request, 'Монополия создана! Ученики выбирают карты')
+    messages.success(request, _('Монополия создана! Ученики выбирают карты'))
     return redirect('games:monopoly_host', monopoly_id=mon.id)
 
 
@@ -679,7 +680,7 @@ def monopoly_create(request, game_id):
 def monopoly_host(request, monopoly_id):
     mon = get_object_or_404(MonopolyGame, pk=monopoly_id)
     if mon.game.created_by != request.user:
-        messages.error(request, 'Нет доступа')
+        messages.error(request, _('Нет доступа'))
         return redirect('games:list')
 
     players = list(mon.players_ordered())
@@ -702,7 +703,7 @@ def monopoly_start(request, monopoly_id):
         return redirect('games:list')
 
     if mon.players.count() < 2:
-        messages.error(request, 'Нужно минимум 2 игрока')
+        messages.error(request, _('Нужно минимум 2 игрока'))
         return redirect('games:monopoly_host', monopoly_id=mon.id)
 
     mon.status = 'playing'
@@ -712,7 +713,7 @@ def monopoly_start(request, monopoly_id):
     mon.save()
     mon.bump_version()
 
-    messages.success(request, 'Игра началась!')
+    messages.success(request, _('Игра началась!'))
     return redirect('games:monopoly_host', monopoly_id=mon.id)
 
 
@@ -723,7 +724,7 @@ def monopoly_join(request, game_id):
 
     game = get_object_or_404(Game, pk=game_id)
     if not hasattr(game, 'monopoly'):
-        messages.error(request, 'Партия не создана')
+        messages.error(request, _('Партия не создана'))
         return redirect('games:detail', game_id=game.id)
 
     mon = game.monopoly
@@ -737,7 +738,7 @@ def monopoly_join(request, game_id):
         defaults={'wallet_start': quiz_score, 'has_extra_turn': False},
     )
 
-    messages.success(request, 'Вы подключились к Монополии!')
+    messages.success(request, _('Вы подключились к Монополии!'))
     return redirect('games:monopoly_shop', monopoly_id=mon.id)
 
 
@@ -747,7 +748,7 @@ def monopoly_shop(request, monopoly_id):
     if not request.user.is_student():
         return redirect('games:list')
 
-    player, _ = MonopolyPlayer.objects.get_or_create(
+    player, _created = MonopolyPlayer.objects.get_or_create(
         monopoly=mon, student=request.user,
         defaults={'wallet_start': 0},
     )
@@ -831,7 +832,7 @@ def monopoly_buy_card(request, monopoly_id):
         teacher=mon.game.created_by,
         points=-price,
         reason='manual',
-        comment=f'🛒 Карта: {CARD_INFO[card_type]["name"]}',
+        comment=_('🛒 Карта: %(name)s') % {'name': CARD_INFO[card_type]["name"]},
     )
 
     mon.bump_version()
@@ -891,7 +892,7 @@ def monopoly_roll(request, monopoly_id):
         modifier_type = 'boost'
         final_pos = min(pos_after_dice + modifier, MONOPOLY_MAX_POSITION)
         player.position = final_pos
-        player.last_event = f'⚡ Ускорение +{modifier}'
+        player.last_event = _('⚡ Ускорение +%(n)s') % {'n': modifier}
         final_cell_type = MONOPOLY_MAP[final_pos]['type']
 
     elif cell_type_after_dice == 'trap':
@@ -902,22 +903,22 @@ def monopoly_roll(request, monopoly_id):
             player.card_used = True
             modifier_type = 'shield'
             final_pos = pos_after_dice
-            player.last_event = '🛡 Щит спас от ловушки!'
+            player.last_event = _('🛡 Щит спас от ловушки!')
         else:
             final_pos = max(pos_after_dice + modifier, 0)
             player.position = final_pos
-            player.last_event = f'💀 Ловушка {modifier}'
+            player.last_event = _('💀 Ловушка %(n)s') % {'n': modifier}
             final_cell_type = MONOPOLY_MAP[final_pos]['type']
 
     elif cell_type_after_dice == 'bonus':
         bonus_value = cell_after_dice.get('effect', 5)
-        player.last_event = f'🎁 Бонус +{bonus_value}'
+        player.last_event = _('🎁 Бонус +%(n)s') % {'n': bonus_value}
         ScoreTransaction.objects.create(
             student=player.student,
             teacher=mon.game.created_by,
             points=bonus_value,
             reason='manual',
-            comment='🎁 Бонус в Монополии',
+            comment=_('🎁 Бонус в Монополии'),
         )
 
     elif cell_type_after_dice == 'swap':
@@ -927,14 +928,14 @@ def monopoly_roll(request, monopoly_id):
             player.position, last.position = last.position, player.position
             last.save()
             final_pos = player.position
-        player.last_event = '🔄 Обмен местами'
+        player.last_event = _('🔄 Обмен местами')
         final_cell_type = MONOPOLY_MAP[final_pos]['type']
 
     if final_cell_type == 'finish' or player.position >= MONOPOLY_MAX_POSITION:
         player.position = MONOPOLY_MAX_POSITION
         player.is_finished = True
         player.finished_at = timezone.now()
-        player.last_event = '🏆 ФИНИШ!'
+        player.last_event = _('🏆 ФИНИШ!')
         mon.status = 'finished'
         mon.finished_at = timezone.now()
         mon.save()
@@ -943,7 +944,7 @@ def monopoly_roll(request, monopoly_id):
             teacher=mon.game.created_by,
             points=100,
             reason='manual',
-            comment='🏆 Победа в Монополии',
+            comment=_('🏆 Победа в Монополии'),
         )
 
     if player.card_type == CARD_DOUBLE and not player.card_used:
@@ -1022,7 +1023,7 @@ def monopoly_play(request, monopoly_id):
     if mon.status == 'finished':
         return redirect('games:monopoly_results', monopoly_id=mon.id)
 
-    player, _ = MonopolyPlayer.objects.get_or_create(
+    player, _created = MonopolyPlayer.objects.get_or_create(
         monopoly=mon, student=request.user,
         defaults={'wallet_start': 0},
     )
@@ -1070,15 +1071,15 @@ def tower_create(request, game_id):
     game = get_object_or_404(Game, pk=game_id, created_by=request.user)
 
     if hasattr(game, 'tower'):
-        messages.info(request, 'Турнир уже создан')
+        messages.info(request, _('Турнир уже создан'))
         return redirect('games:tower_host', tower_id=game.tower.id)
 
     if game.sessions.count() < 2:
-        messages.error(request, 'Нужно минимум 2 ученика')
+        messages.error(request, _('Нужно минимум 2 ученика'))
         return redirect('games:manage', game_id=game.id)
 
     if game.sessions.count() > 16:
-        messages.error(request, 'Максимум 16 учеников')
+        messages.error(request, _('Максимум 16 учеников'))
         return redirect('games:manage', game_id=game.id)
 
     tower = TowerGame.objects.create(game=game, status='waiting')
@@ -1094,7 +1095,7 @@ def tower_create(request, game_id):
             wallet_start=quiz_score,
         )
 
-    messages.success(request, 'Турнир создан!')
+    messages.success(request, _('Турнир создан!'))
     return redirect('games:tower_host', tower_id=tower.id)
 
 
@@ -1105,7 +1106,7 @@ def tower_join(request, game_id):
 
     game = get_object_or_404(Game, pk=game_id)
     if not hasattr(game, 'tower'):
-        messages.error(request, 'Турнир не создан')
+        messages.error(request, _('Турнир не создан'))
         return redirect('games:detail', game_id=game.id)
 
     tower = game.tower
@@ -1119,7 +1120,7 @@ def tower_join(request, game_id):
         defaults={'wallet_start': quiz_score},
     )
 
-    messages.success(request, 'Вы подключились к турниру!')
+    messages.success(request, _('Вы подключились к турниру!'))
     return redirect('games:tower_play', tower_id=tower.id)
 
 
@@ -1130,7 +1131,7 @@ def tower_shop(request, tower_id):
     if not request.user.is_student():
         return redirect('games:list')
 
-    player, _ = TowerPlayer.objects.get_or_create(
+    player, _created = TowerPlayer.objects.get_or_create(
         tower=tower, student=request.user,
         defaults={'wallet_start': 0},
     )
@@ -1213,7 +1214,7 @@ def tower_buy_attack(request, tower_id):
         teacher=tower.game.created_by,
         points=-price,
         reason='manual',
-        comment=f'🏰 Спецатака: {TOWER_ATTACKS[attack_type]["name"]}',
+        comment=_('🏰 Спецатака: %(name)s') % {'name': TOWER_ATTACKS[attack_type]["name"]},
     )
 
     tower.bump_version()
@@ -1232,12 +1233,11 @@ def tower_play(request, tower_id):
     if tower.status == 'finished':
         return redirect('games:tower_results', tower_id=tower.id)
 
-    player, _ = TowerPlayer.objects.get_or_create(
+    player, _created = TowerPlayer.objects.get_or_create(
         tower=tower, student=request.user,
         defaults={'wallet_start': 0},
     )
 
-    # Если ещё в магазине
     if tower.status == 'waiting' and not player.chosen_attack and player.wallet_start > 0:
         return redirect('games:tower_shop', tower_id=tower.id)
 
@@ -1294,7 +1294,7 @@ def tower_attack(request, tower_id):
 def tower_host(request, tower_id):
     tower = get_object_or_404(TowerGame, pk=tower_id)
     if tower.game.created_by != request.user:
-        messages.error(request, 'Нет доступа')
+        messages.error(request, _('Нет доступа'))
         return redirect('games:list')
 
     players = list(tower.players.all())
@@ -1323,15 +1323,15 @@ def tower_start(request, tower_id):
         return redirect('games:list')
 
     if tower.players.count() < 2:
-        messages.error(request, 'Нужно минимум 2 игрока')
+        messages.error(request, _('Нужно минимум 2 игрока'))
         return redirect('games:tower_host', tower_id=tower.id)
 
     if tower.matches.exists():
-        messages.info(request, 'Сетка уже построена')
+        messages.info(request, _('Сетка уже построена'))
         return redirect('games:tower_host', tower_id=tower.id)
 
     tower.build_bracket()
-    messages.success(request, 'Турнир начался!')
+    messages.success(request, _('Турнир начался!'))
     return redirect('games:tower_host', tower_id=tower.id)
 
 

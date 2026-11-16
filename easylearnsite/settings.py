@@ -38,17 +38,16 @@ INSTALLED_APPS = [
 ]
 
 
-# --- Middleware ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',   # <-- ДОБАВИТЬ
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
 
 # --- URLs / WSGI ---
 ROOT_URLCONF = 'easylearnsite.urls'
@@ -96,11 +95,21 @@ AUTH_USER_MODEL = 'accounts.User'
 
 
 # --- Язык и время ---
+from django.utils.translation import gettext_lazy as _
+
 LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'Asia/Bishkek'
 USE_I18N = True
 USE_TZ = True
 
+LANGUAGES = [
+    ('ru', _('Русский')),
+    ('ky', _('Кыргызча')),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 # --- Статика ---
 STATIC_URL = '/static/'

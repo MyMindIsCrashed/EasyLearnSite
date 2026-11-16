@@ -1,46 +1,46 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Атака башни — {{ tower.game.title }}{% endblock %}
 
 {% block content %}
 <div class="container py-4 tower-page">
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 class="h5 fw-bold mb-0">🏰 {{ match.round_name }}</h1>
-        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1">
-            Ход: <span id="turn-label">…</span>
+        <h1 class="h5 fw-bold mb-0" style="font-family: 'Press Start 2P', monospace; font-size: 14px;">🏰 {{ match.round_name }}</h1>
+        <span class="badge bg-dark text-warning border border-warning rounded-0 px-3 py-2" style="font-family: 'Press Start 2P', monospace; font-size: 10px;">
+            ХОД: <span id="turn-label">...</span>
         </span>
     </div>
 
     <div class="battle-arena" id="arena">
+        <!-- Игрок 1 (Левая сторона) -->
         <div class="tower-side" id="side-1">
-            <div class="player-name" id="name-1">—</div>
+            <div class="player-name" id="name-1">Загрузка...</div>
             <div class="tower-wrap">
                 <div class="tower" id="tower-1">
-                    <div class="tower-roof"></div>
-                    <div class="tower-body">
-                        <div class="tower-hp-bar">
-                            <div class="tower-hp-fill" id="hp-fill-1"></div>
-                        </div>
+                    <img src="{% static 'images/tower/tower_blue.png' %}" alt="Башня 1" class="tower-img">
+                    <div class="hp-bar-container">
+                        <div class="tower-hp-fill" id="hp-fill-1"></div>
                     </div>
                 </div>
                 <div class="hp-text" id="hp-text-1">100 / 100</div>
             </div>
         </div>
 
+        <!-- Центр (Слой для анимаций) -->
         <div class="battle-center">
             <div class="vs-label">VS</div>
             <div id="anim-layer" class="anim-layer"></div>
         </div>
 
+        <!-- Игрок 2 (Правая сторона) -->
         <div class="tower-side" id="side-2">
-            <div class="player-name" id="name-2">—</div>
+            <div class="player-name" id="name-2">Загрузка...</div>
             <div class="tower-wrap">
                 <div class="tower" id="tower-2">
-                    <div class="tower-roof"></div>
-                    <div class="tower-body">
-                        <div class="tower-hp-bar">
-                            <div class="tower-hp-fill" id="hp-fill-2"></div>
-                        </div>
+                    <img src="{% static 'images/tower/tower_red.png' %}" alt="Башня 2" class="tower-img">
+                    <div class="hp-bar-container">
+                        <div class="tower-hp-fill" id="hp-fill-2"></div>
                     </div>
                 </div>
                 <div class="hp-text" id="hp-text-2">100 / 100</div>
@@ -48,162 +48,239 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
+    <!-- Панель с кнопкой атаки -->
+    <div class="retro-panel p-3 mt-3">
         <div class="text-center">
-            <button id="attack-btn" class="btn-attack-main" disabled>
+            <button id="attack-btn" class="btn-retro-attack" disabled>
                 ⚔️ АТАКОВАТЬ
             </button>
 
             {% if special_attack_info %}
-                <div class="mt-2 small text-muted">
-                    🎯 Шанс <b>{{ special_chance }}%</b> призвать
-                    <b>{{ special_attack_info.emoji }} {{ special_attack_info.name }}</b>
-                    ({{ special_attack_info.damage }} урона), иначе — 🏹 Стрела (5 урона)
+                <div class="mt-3 text-light small" style="font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1.5;">
+                    🎯 ШАНС {{ special_chance }}% ПРИЗВАТЬ<br>
+                    <span class="text-warning">{{ special_attack_info.emoji }} {{ special_attack_info.name }}</span> 
+                    ({{ special_attack_info.damage }} УРОНА)<br>
+                    ИНАЧЕ — 🏹 СТРЕЛА (5 УРОНА)
                 </div>
             {% else %}
-                <div class="mt-2 small text-muted">
-                    🏹 Только стрела: 5 урона, 100%
+                <div class="mt-3 text-light small" style="font-family: 'Press Start 2P', monospace; font-size: 10px;">
+                    🏹 ТОЛЬКО СТРЕЛА: 5 УРОНА
                 </div>
             {% endif %}
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
-        <h6 class="fw-bold mb-2">📜 Лог боя</h6>
-        <div id="battle-log" class="battle-log small text-muted">Пока пусто…</div>
+    <!-- Лог боя -->
+    <div class="retro-panel p-3 mt-3">
+        <h6 class="text-warning mb-3" style="font-family: 'Press Start 2P', monospace; font-size: 12px;">📜 ЛОГ БОЯ</h6>
+        <div id="battle-log" class="battle-log">Пока пусто…</div>
     </div>
 
     <div id="message" class="alert mt-3 d-none"></div>
 </div>
 
 <style>
-.tower-page { max-width: 1000px; margin: 0 auto; }
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
+.tower-page { 
+    max-width: 1000px; 
+    margin: 0 auto; 
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+}
+
+/* Арена с текстурой травы */
 .battle-arena {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     gap: 16px;
-    background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
-    border-radius: 28px;
+    background-color: #2d1e12;
+    /* Ссылка на твою картинку */
+    background-image: url("{% static 'images/tower/bg_grass.png' %}");
+    
+    /* ГЛАВНОЕ ИСПРАВЛЕНИЕ: растягиваем на всю арену без повторений */
+    background-size: cover; 
+    background-position: center;
+    background-repeat: no-repeat;
+    
+    border: 4px solid #111;
+    border-radius: 0;
     padding: 24px;
     min-height: 380px;
     align-items: end;
     position: relative;
     overflow: hidden;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 4px 4px 0 #000;
 }
-.battle-arena::before {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
-    background: linear-gradient(180deg, transparent, rgba(34, 197, 94, 0.25));
-    pointer-events: none;
+
+.tower-side { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: space-between;
+    height: 100%;
+    z-index: 2; 
 }
-.tower-side { display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 2; }
+
 .player-name {
-    font-weight: 900; font-size: 16px; color: #1e3a8a;
-    background: white; padding: 4px 14px; border-radius: 100px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    font-size: 12px; 
+    color: #ffd700;
+    background: #222; 
+    padding: 8px 12px; 
+    border: 3px solid #555;
+    border-radius: 0;
+    text-transform: uppercase;
+    box-shadow: 3px 3px 0 #000;
+    margin-top: -10px;
+    margin-bottom: auto;
 }
-.tower-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.tower-wrap { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 10px; 
+    margin-bottom: 20px;
+}
+
 .tower {
-    width: 90px; height: 180px; position: relative; transition: transform 0.2s;
+    width: 120px; height: 180px; 
+    position: relative; 
+    transition: transform 0.1s;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    align-items: center;
 }
-.tower.shake { animation: towerShake 0.5s; }
+.tower.shake { animation: towerShake 0.3s; }
 @keyframes towerShake {
     0%, 100% { transform: translateX(0); }
-    20% { transform: translateX(-8px); }
-    40% { transform: translateX(8px); }
-    60% { transform: translateX(-5px); }
-    80% { transform: translateX(5px); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-4px); }
 }
-.tower.destroyed { opacity: 0.4; filter: grayscale(1); }
+.tower.destroyed { opacity: 0.5; filter: grayscale(1); }
 
-.tower-roof {
-    width: 0; height: 0;
-    border-left: 55px solid transparent;
-    border-right: 55px solid transparent;
-    border-bottom: 40px solid #b91c1c;
-    margin-left: -10px;
-    filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
-    position: relative; z-index: 2;
+.tower-img {
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    margin-bottom: 10px;
 }
-.tower-body {
-    width: 80px; height: 140px;
-    background: linear-gradient(90deg, #78716c 0%, #a8a29e 50%, #78716c 100%);
-    border-radius: 6px 6px 4px 4px;
-    margin: 0 auto;
-    box-shadow: inset 0 0 12px rgba(0,0,0,0.25), 0 8px 16px -4px rgba(0,0,0,0.4);
-    display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 6px;
+
+.hp-bar-container {
+    width: 100%; height: 16px;
+    background: #333 !important; /* Темный фон (пустота) */
+    border: 3px solid #555;
+    border-radius: 0;
+    overflow: hidden;
+    position: relative; 
+    z-index: 3;
+    box-shadow: 2px 2px 0 #000;
 }
-.tower-hp-bar {
-    width: 100%; height: 10px;
-    background: rgba(0,0,0,0.35);
-    border-radius: 100px; overflow: hidden;
-}
+
 .tower-hp-fill {
-    height: 100%; background: linear-gradient(90deg, #10b981, #34d399);
-    border-radius: 100px; transition: width 0.5s ease, background 0.3s;
+    height: 100%; 
+    background: #ef4444 !important; /* Ярко-красная полоска */
     width: 100%;
 }
-.tower-hp-fill.low { background: linear-gradient(90deg, #dc2626, #ef4444); }
-.tower-hp-fill.mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-.hp-text { font-weight: 900; font-size: 14px; color: #1e3a8a; }
+.tower-hp-fill.low { background: #ef4444 !important; }
+.tower-hp-fill.mid { background: #ef4444 !important; }
+
+.hp-text { 
+    font-size: 10px; color: #fff; 
+    text-shadow: 2px 2px 0 #000;
+}
 
 .battle-center {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     position: relative; min-width: 80px;
+    height: 100%;
 }
 .vs-label {
-    font-size: 42px; font-weight: 900; color: #dc2626;
-    text-shadow: 0 3px 0 white, 0 5px 12px rgba(0,0,0,0.3);
-    font-style: italic;
-}
-.anim-layer { position: absolute; inset: 0; pointer-events: none; }
-.projectile {
-    position: absolute; font-size: 44px;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4)); z-index: 10;
-}
-.explosion {
-    position: absolute; font-size: 64px;
-    animation: explode 0.6s ease-out forwards; z-index: 11;
-}
-@keyframes explode {
-    0% { transform: scale(0.3); opacity: 0; }
-    40% { transform: scale(1.4); opacity: 1; }
-    100% { transform: scale(2); opacity: 0; }
+    font-size: 28px; color: #ef4444;
+    text-shadow: 3px 3px 0 #000;
+    font-style: normal;
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
-.btn-attack-main {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    border: none;
-    border-radius: 16px;
+.anim-layer { position: absolute; inset: 0; pointer-events: none; }
+
+.projectile {
+    position: absolute; 
+    width: 32px; height: 32px;
+    image-rendering: pixelated;
+    z-index: 10;
+}
+
+.explosion {
+    position: absolute; 
+    width: 64px; height: 64px;
+    background-image: url("{% static 'images/tower/explosion.png' %}");
+    background-size: contain;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    animation: explode 0.5s steps(4) forwards;
+    z-index: 11;
+}
+@keyframes explode {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Анимация для огромного финального взрыва */
+@keyframes bigExplode {
+    0% { transform: scale(0.1) rotate(0deg); opacity: 0; }
+    20% { transform: scale(1) rotate(15deg); opacity: 1; }
+    80% { transform: scale(1.2) rotate(-15deg); opacity: 1; }
+    100% { transform: scale(1.5) rotate(0deg); opacity: 0; }
+}
+
+.retro-panel {
+    background: #222;
+    border: 4px solid #555;
+    border-radius: 0;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.btn-retro-attack {
+    background: #dc2626;
+    color: #fff;
+    border: 4px solid #000;
+    border-radius: 0;
     padding: 16px 40px;
-    font-size: 20px;
-    font-weight: 900;
-    letter-spacing: 1px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
     cursor: pointer;
-    box-shadow: 0 6px 0 #991b1b, 0 8px 20px rgba(220,38,38,0.4);
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.4), 4px 4px 0 #000;
     transition: all 0.1s;
+    text-transform: uppercase;
 }
-.btn-attack-main:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 0 #991b1b, 0 10px 24px rgba(220,38,38,0.5);
+.btn-retro-attack:hover:not(:disabled) { background: #ef4444; }
+.btn-retro-attack:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: inset 4px 4px 0 rgba(0,0,0,0.4), 2px 2px 0 #000;
 }
-.btn-attack-main:active:not(:disabled) {
-    transform: translateY(4px);
-    box-shadow: 0 2px 0 #991b1b, 0 4px 12px rgba(220,38,38,0.4);
-}
-.btn-attack-main:disabled {
-    background: #9ca3af;
-    box-shadow: 0 6px 0 #4b5563;
+.btn-retro-attack:disabled {
+    background: #555;
+    color: #888;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.4), 4px 4px 0 #000;
     cursor: not-allowed;
 }
 
 .battle-log {
-    max-height: 140px; overflow-y: auto;
-    background: #fafaff; border-radius: 12px; padding: 10px;
-    font-family: monospace;
+    max-height: 160px; overflow-y: auto;
+    background: #111; 
+    border: 3px solid #333;
+    border-radius: 0; padding: 12px;
+    font-size: 11px;
+    color: #4ade80;
+    line-height: 1.8;
 }
+.battle-log b { color: #fff; }
+.battle-log .text-danger { color: #ef4444 !important; }
+.battle-log .text-success { color: #4ade80 !important; }
+.battle-log .text-muted { color: #888 !important; }
 </style>
 
 <script>
@@ -212,83 +289,99 @@
 
     const TOWER_ID = {{ tower.id }};
     const MY_ID = {{ player.id }};
-    const MY_SIDE = {% if match.player1_id == player.id %}1{% else %}2{% endif %};
+    
+    let MY_SIDE = 1; 
+    try {
+        MY_SIDE = {% if match.player1_id == player.id %}1{% else %}2{% endif %};
+    } catch(e) {}
 
     let busy = false;
     let lastLogLength = -1;
+    
+    // ЗАПОМИНАЕМ HP (на случай, если сервер удалит матч)
+    let lastHp1 = 100;
+    let lastHp2 = 100;
+    let gameFinishedTriggered = false;
 
     const btn = document.getElementById('attack-btn');
 
     btn.addEventListener('click', function() {
-        if (busy) return;
+        if (busy || gameFinishedTriggered) return;
         busy = true;
         btn.disabled = true;
 
-        fetch("{% url 'games:tower_attack' tower.id %}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-            if (data.error) {
-                showMsg('Ошибка: ' + data.error);
+        animateAttack().then(function() {
+            fetch("{% url 'games:tower_attack' tower.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                if (data.error) showMsg('Ошибка: ' + data.error);
+                refreshState(); 
+            })
+            .catch(function(e) {
+                console.error('ATTACK ERROR:', e);
+                showMsg('Ошибка сети');
                 busy = false;
-                refreshState();
-                return;
-            }
-            animateAttack(data).then(function() {
-                refreshState();
             });
-        })
-        .catch(function(e) {
-            console.error('ATTACK ERROR:', e);
-            showMsg('Ошибка сети');
-            busy = false;
         });
     });
 
-    function animateAttack(data) {
+    function animateAttack() {
         return new Promise(function(resolve) {
-            var fromSide = (data.attacker_id === MY_ID) ? MY_SIDE : (MY_SIDE === 1 ? 2 : 1);
-            var targetSide = fromSide === 1 ? 2 : 1;
-            var arena = document.getElementById('arena');
+            var fromSide = MY_SIDE;
+            var targetSide = (MY_SIDE === 1) ? 2 : 1;
+            
+            var layer = document.getElementById('anim-layer');
             var fromEl = document.getElementById('tower-' + fromSide);
             var toEl = document.getElementById('tower-' + targetSide);
-            var layer = document.getElementById('anim-layer');
 
-            if (!arena || !fromEl || !toEl || !layer) { resolve(); return; }
+            if (!layer || !fromEl || !toEl) { resolve(); return; }
 
             var fromRect = fromEl.getBoundingClientRect();
             var toRect = toEl.getBoundingClientRect();
-            var arenaRect = arena.getBoundingClientRect();
+            var layerRect = layer.getBoundingClientRect();
 
-            var startX = fromRect.left - arenaRect.left + fromRect.width / 2;
-            var startY = fromRect.top - arenaRect.top + fromRect.height / 3;
-            var endX = toRect.left - arenaRect.left + toRect.width / 2;
-            var endY = toRect.top - arenaRect.top + toRect.height / 3;
+            var startX = fromRect.left - layerRect.left + (fromRect.width / 2) - 32;
+            var startY = fromRect.top - layerRect.top + (fromRect.height / 3);
+            var endX = toRect.left - layerRect.left + (toRect.width / 2) - 32;
+            var endY = toRect.top - layerRect.top + (toRect.height / 3);
 
             var proj = document.createElement('div');
             proj.className = 'projectile';
-            proj.textContent = data.attack_emoji;
+            
+            var isFlyingLeft = endX < startX;
+            var flipStr = isFlyingLeft ? 'scaleX(-1)' : 'scaleX(1)';
+
+            proj.innerHTML = `<img src="/static/images/tower/arrow.png" 
+                                  style="width: 64px; height: 64px; 
+                                         image-rendering: pixelated; 
+                                         transform: ${flipStr};
+                                         filter: drop-shadow(0 0 10px #fbbf24);"
+                                  onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'font-size:50px;\'>🔥</div>';">`;
+            
             proj.style.left = startX + 'px';
             proj.style.top = startY + 'px';
-            proj.style.transition = 'all 0.6s cubic-bezier(0.5, 0, 1, 1)';
+            proj.style.position = 'absolute';
+            proj.style.zIndex = '999';
+            proj.style.transition = 'left 1s linear, top 1s linear'; 
+            
             layer.appendChild(proj);
 
-            requestAnimationFrame(function() {
+            setTimeout(function() {
                 proj.style.left = endX + 'px';
                 proj.style.top = endY + 'px';
-                proj.style.transform = 'rotate(720deg)';
-            });
+            }, 20);
 
             setTimeout(function() {
                 proj.remove();
-
                 var boom = document.createElement('div');
                 boom.className = 'explosion';
-                boom.textContent = data.is_special ? '💥' : '🎯';
-                boom.style.left = endX + 'px';
-                boom.style.top = endY + 'px';
+                boom.style.left = (endX + 32 - 32) + 'px'; 
+                boom.style.top = (endY - 32) + 'px';
+                boom.style.position = 'absolute';
+                boom.style.zIndex = '1000';
                 layer.appendChild(boom);
 
                 toEl.classList.add('shake');
@@ -298,95 +391,129 @@
                     boom.remove();
                     resolve();
                 }, 600);
-            }, 620);
+            }, 1000); 
         });
+    }
+
+    // ФУНКЦИЯ ОГРОМНОГО ВЗРЫВА
+    function triggerBigExplosion(loserSide) {
+        if (gameFinishedTriggered) return;
+        gameFinishedTriggered = true;
+
+        var loserTower = document.getElementById('tower-' + loserSide);
+        var layer = document.getElementById('anim-layer');
+        
+        if (loserTower && layer) {
+            var towerRect = loserTower.getBoundingClientRect();
+            var layerRect = layer.getBoundingClientRect();
+            
+            var bigBoom = document.createElement('div');
+            bigBoom.className = 'explosion';
+            
+            var size = 250;
+            bigBoom.style.width = size + 'px';
+            bigBoom.style.height = size + 'px';
+            
+            bigBoom.style.left = (towerRect.left - layerRect.left + (towerRect.width / 2) - (size / 2)) + 'px';
+            bigBoom.style.top = (towerRect.top - layerRect.top + (towerRect.height / 2) - (size / 2)) + 'px';
+            
+            bigBoom.style.position = 'absolute';
+            bigBoom.style.zIndex = '9999';
+            bigBoom.style.animation = 'none'; 
+            void bigBoom.offsetWidth; 
+            bigBoom.style.animation = 'bigExplode 2s ease-out forwards'; 
+            
+            layer.appendChild(bigBoom);
+            loserTower.classList.add('destroyed'); 
+        }
+        
+        var turnLabel = document.getElementById('turn-label');
+        if (turnLabel) {
+            turnLabel.textContent = '🏆 ИГРА ОКОНЧЕНА!';
+            turnLabel.style.color = '#fbbf24';
+        }
+        
+        setTimeout(function() { 
+            window.location.href = "{% url 'games:tower_results' tower.id %}"; 
+        }, 3000);
     }
 
     function applyState(data) {
         var m = data.current_match;
+        
+        // Если матча нет, но игра закончена — запускаем взрыв по последним известным HP
         if (!m) {
-            setTimeout(function() {
-                if (data.status === 'finished') {
-                    window.location.href = "{% url 'games:tower_results' tower.id %}";
-                } else {
-                    window.location.href = "{% url 'games:tower_play' tower.id %}";
-                }
-            }, 1500);
+            if (data.status === 'finished') {
+                var loserSide = (lastHp1 <= lastHp2) ? 1 : 2; // У кого HP было меньше, тот и взорвался
+                triggerBigExplosion(loserSide);
+            } else if (data.status !== 'finished') {
+                window.location.href = "{% url 'games:tower_play' tower.id %}";
+            }
             return;
         }
 
-        document.getElementById('name-1').textContent = m.player1_name || '—';
-        document.getElementById('name-2').textContent = m.player2_name || '—';
+        document.getElementById('name-1').textContent = m.player1_name || 'Игрок 1';
+        document.getElementById('name-2').textContent = m.player2_name || 'Игрок 2';
+
+        if (m.player1_id === MY_ID) MY_SIDE = 1;
+        if (m.player2_id === MY_ID) MY_SIDE = 2;
 
         var maxHp = 100;
         var hp1 = Math.max(0, m.hp1);
         var hp2 = Math.max(0, m.hp2);
+        
+        // Сохраняем в память!
+        lastHp1 = hp1;
+        lastHp2 = hp2;
 
         document.getElementById('hp-text-1').textContent = hp1 + ' / ' + maxHp;
         document.getElementById('hp-text-2').textContent = hp2 + ' / ' + maxHp;
 
         var f1 = document.getElementById('hp-fill-1');
         var f2 = document.getElementById('hp-fill-2');
+        
         f1.style.width = Math.max(0, hp1 / maxHp * 100) + '%';
         f2.style.width = Math.max(0, hp2 / maxHp * 100) + '%';
-        f1.className = 'tower-hp-fill' + (hp1 <= 30 ? ' low' : hp1 <= 60 ? ' mid' : '');
-        f2.className = 'tower-hp-fill' + (hp2 <= 30 ? ' low' : hp2 <= 60 ? ' mid' : '');
 
         document.getElementById('tower-1').classList.toggle('destroyed', hp1 <= 0);
         document.getElementById('tower-2').classList.toggle('destroyed', hp2 <= 0);
 
         var turnLabel = document.getElementById('turn-label');
-        var isMyTurn = m.status === 'playing' &&
-            ((m.turn === 1 && m.player1_id === MY_ID) || (m.turn === 2 && m.player2_id === MY_ID));
+        var isMyTurn = m.status === 'playing' && ((m.turn === 1 && m.player1_id === MY_ID) || (m.turn === 2 && m.player2_id === MY_ID));
 
-        if (m.status === 'finished') {
-            turnLabel.textContent = '🏆 Бой завершён';
-        } else if (isMyTurn) {
-            turnLabel.textContent = '🎯 Твой ход!';
-        } else {
-            turnLabel.textContent = 'Ждём соперника…';
-        }
+        if (m.status === 'finished') turnLabel.textContent = 'БОЙ ЗАВЕРШЁН';
+        else if (isMyTurn) turnLabel.textContent = 'ТВОЙ ХОД!';
+        else turnLabel.textContent = 'ЖДЁМ СОПЕРНИКА...';
 
-        btn.disabled = !isMyTurn || busy;
+        btn.disabled = !isMyTurn || busy || gameFinishedTriggered;
 
         var log = m.log || [];
         if (log.length !== lastLogLength) {
             lastLogLength = log.length;
             var logEl = document.getElementById('battle-log');
-            if (log.length === 0) {
-                logEl.innerHTML = '<div class="text-muted">Пока пусто…</div>';
-            } else {
-                logEl.innerHTML = log.map(function(e) {
-                    var cls = e.is_special ? 'text-danger fw-bold' : 'text-success';
-                    return '<div class="' + cls + '">' + e.attack_emoji + ' <b>' +
-                           e.attacker_name + '</b> → <b>' + e.defender_name + '</b> · -' + e.damage + ' HP</div>';
-                }).join('');
-                logEl.scrollTop = logEl.scrollHeight;
-            }
+            logEl.innerHTML = log.length === 0 ? '<div class="text-muted">Пока пусто…</div>' : log.map(function(e) {
+                var cls = e.is_special ? 'text-danger fw-bold' : 'text-success';
+                return '<div class="' + cls + '">> ' + e.attacker_name + ' -> ' + e.defender_name + ' [-' + e.damage + ' HP]</div>';
+            }).join('');
+            logEl.scrollTop = logEl.scrollHeight;
         }
 
+        // Если статус finished, но матч еще не удален
         if (m.status === 'finished') {
-            setTimeout(function() {
-                window.location.href = "{% url 'games:tower_play' tower.id %}";
-            }, 2500);
+            var loserSide = (hp1 <= 0) ? 1 : (hp2 <= 0 ? 2 : (hp1 < hp2 ? 1 : 2));
+            triggerBigExplosion(loserSide);
         }
     }
 
     function refreshState() {
         fetch("{% url 'games:tower_state' tower.id %}")
-            .then(function(r) {
-                if (!r.ok) return null;
-                return r.json();
-            })
+            .then(function(r){ return r.ok ? r.json() : null; })
             .then(function(data) {
                 if (!data) { busy = false; return; }
                 applyState(data);
                 busy = false;
             })
-            .catch(function(e) {
-                console.error('state error', e);
-                busy = false;
-            });
+            .catch(function(e) { console.error('state error', e); busy = false; });
     }
 
     function showMsg(text) {
@@ -398,9 +525,7 @@
     }
 
     refreshState();
-    setInterval(function() {
-        if (!busy) refreshState();
-    }, 1500);
+    setInterval(function() { if (!busy) refreshState(); }, 1500);
 })();
 </script>
 {% endblock %}

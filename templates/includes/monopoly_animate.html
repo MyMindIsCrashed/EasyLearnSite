@@ -1,8 +1,5 @@
 {% comment %}
 Общая логика анимации карты Монополии.
-Параметры:
-  - my_id : id текущего MonopolyPlayer (необязательно)
-  - map   : список клеток MONOPOLY_MAP
 {% endcomment %}
 
 <script>
@@ -15,6 +12,21 @@ const MNO_MY_ID = null;
 const MNO_MAP = {{ map|safe }};
 const MNO_COLS = 6;
 const MNO_ROWS = 6;
+
+// ЦВЕТА ИГРОКОВ И ОБЩАЯ ФУНКЦИЯ АВАТАРА
+// (MNO_PLAYER_IDS объявляется в monopoly_play.html)
+const MNO_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316', '#14b8a6'];
+
+function mnoSlot(id) {
+    const i = (typeof MNO_PLAYER_IDS !== 'undefined') ? MNO_PLAYER_IDS.indexOf(id) : -1;
+    return i >= 0 ? i : id;
+}
+function mnoPlayerColor(id) { return MNO_COLORS[mnoSlot(id) % MNO_COLORS.length]; }
+function mnoAvatarSrc(id) {
+    let num = id;
+    if (num > 5) num = (num % 5) + 1;
+    return `/static/images/avatars/char${num}.png`;
+}
 
 function mnoSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -41,8 +53,10 @@ function mnoGetCellStyle(index) {
 }
 
 function mnoMakeChipHtml(p) {
-    if (p.avatar) return `<img src="${p.avatar}" alt="">`;
-    return p.emoji || '🧑';
+    if (p.avatar) {
+        return `<img src="${p.avatar}" alt="" style="image-rendering: pixelated; width: 100%; height: 100%; object-fit: cover;">`;
+    }
+    return `<img src="${mnoAvatarSrc(p.id)}" alt="" style="image-rendering: pixelated; width: 100%; height: 100%; object-fit: cover;">`;
 }
 
 const mnoLastPositions = {};
@@ -99,6 +113,8 @@ function mnoMoveChipTo(playerId, cellIndex, jump = true) {
     if (!targetCell) return null;
 
     const playersBox = targetCell.querySelector('.track-cell-players');
+    if (!playersBox) return null;
+
     const existing = mnoGetChip(playerId);
 
     let chipHtml;
@@ -115,6 +131,7 @@ function mnoMoveChipTo(playerId, cellIndex, jump = true) {
     const chip = document.createElement('div');
     chip.className = 'track-cell-player' + (playerId === MNO_MY_ID ? ' is-me' : '');
     chip.dataset.playerId = playerId;
+    chip.style.setProperty('--pc', mnoPlayerColor(playerId));
     const p = mnoPlayersCache.find(x => x.id === playerId);
     chip.title = p ? p.name : '';
     chip.innerHTML = chipHtml;
@@ -133,27 +150,30 @@ function mnoMoveChipTo(playerId, cellIndex, jump = true) {
     return chip;
 }
 
+// АНИМАЦИЯ ШАГОВ (ПОШАГОВО)
 async function mnoAnimatePlayer(playerId, from, to) {
     if (from === to) return;
 
     const step = from < to ? 1 : -1;
+    // Идем по одной клетке
     for (let i = from + step; step > 0 ? i <= to : i >= to; i += step) {
         const cellEl = document.querySelector(`.track-cell[data-index="${i}"]`);
         if (cellEl) {
             cellEl.classList.add('stepping');
             mnoMoveChipTo(playerId, i, true);
-            await mnoSleep(280);
+            await mnoSleep(300); // Пауза между шагами
             cellEl.classList.remove('stepping');
         }
     }
 
+    // Подсветка финальной клетки
     const finalCell = document.querySelector(`.track-cell[data-index="${to}"]`);
     if (finalCell) {
         finalCell.classList.add('arrived');
-        setTimeout(() => finalCell.classList.remove('arrived'), 1200);
+        setTimeout(() => finalCell.classList.remove('arrived'), 1000);
     }
 
-    await mnoSleep(240);
+    await mnoSleep(200);
 }
 
 async function mnoAnimateAll(players) {
@@ -161,7 +181,10 @@ async function mnoAnimateAll(players) {
 
     players.forEach(p => {
         const prev = mnoLastPositions[p.id];
+        // Если позиция изменилась, запускаем анимацию
         if (prev !== undefined && prev !== p.position) {
+            // хук для лога ходов (определяется в monopoly_play.html)
+            if (typeof mnoOnMove === 'function') mnoOnMove(p, prev, p.position);
             tasks.push(mnoAnimatePlayer(p.id, prev, p.position));
         }
     });

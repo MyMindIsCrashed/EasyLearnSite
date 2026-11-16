@@ -1,475 +1,280 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Монополия{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4 monopoly-page">
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 class="h5 fw-bold mb-0">🎲 Монополия</h1>
+        <h1 class="h4 fw-bold mb-0 text-dark">🏙️ Городская Монополия</h1>
         <div class="d-flex gap-2 flex-wrap">
-            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1">
+            <span class="badge bg-white text-dark border shadow-sm rounded-pill px-3 py-2">
                 Ход #<span id="turn-number">{{ monopoly.turn_number }}</span>
             </span>
             {% if card_info %}
-                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-1">
+                <span class="badge bg-warning text-dark shadow-sm rounded-pill px-3 py-2">
                     {{ card_info.emoji }} {{ card_info.name }}
                 </span>
             {% endif %}
         </div>
     </div>
 
-    <div class="board-wrap">
-        <div class="board" id="track"></div>
+    <div class="row g-3">
+        <!-- КАРТА -->
+        <div class="col-lg-9">
+            <div class="board-wrap">
+                <div class="board" id="track"></div>
 
-        <div class="board-center">
-            <div id="turn-status" class="center-status">
-                <div class="fs-5 fw-bold text-muted">Загрузка…</div>
-            </div>
+                <!-- ЦЕНТРАЛЬНАЯ ЗОНА -->
+                <div class="board-center">
 
-            <button id="roll-btn" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow d-none">
-                🎲 Бросить кубик
-            </button>
+                    <div id="dice-container" class="dice-container">
+                        <div class="dice" id="main-dice">
+                            <div class="face front">1</div>
+                            <div class="face back">2</div>
+                            <div class="face right">3</div>
+                            <div class="face left">4</div>
+                            <div class="face top">5</div>
+                            <div class="face bottom">6</div>
+                        </div>
+                    </div>
 
-            <div id="roulette" class="roulette-container d-none">
-                <div class="roulette-window">
-                    <div class="roulette-track" id="roulette-track"></div>
-                    <div class="roulette-center-line"></div>
-                    <div class="roulette-pointer">▼</div>
+                    <div id="turn-status" class="center-status text-center mt-3">
+                        <div class="fs-6 fw-bold text-dark">Загрузка…</div>
+                    </div>
+
+                    <button id="roll-btn" class="btn-roll shadow d-none mt-2">
+                        🎲 БРОСИТЬ КУБИК
+                    </button>
+
+                    <!-- ЛОГ ХОДОВ -->
+                    <div id="move-log" class="move-log"></div>
+
+                    <!-- СКРЫТЫЕ ЭЛЕМЕНТЫ ДЛЯ JS -->
+                    <div id="roulette" class="d-none"><div id="roulette-track"></div></div>
+                    <div id="dice-result" class="d-none"></div>
+                    <div id="modifier-cell" class="d-none"></div>
+                    <div id="equals-cell" class="d-none"></div>
+                    <div id="total-cell" class="d-none"></div>
+                    <div id="dice-value" class="d-none"></div>
+                    <div id="dice-modifier" class="d-none"></div>
+                    <div id="dice-total" class="d-none"></div>
+                    <div id="dice-event" class="d-none"></div>
+
+                    <div id="message" class="alert mt-1 mb-0 d-none small py-1"></div>
                 </div>
             </div>
-
-            <div id="dice-result" class="d-none mt-1">
-                <div class="result-wrapper">
-                    <div class="result-cell result-main">
-                        <div class="dice-big" id="dice-value">?</div>
-                    </div>
-                    <div class="result-cell result-modifier d-none" id="modifier-cell">
-                        <div class="dice-mod" id="dice-modifier">+3</div>
-                    </div>
-                    <div class="result-cell result-equals d-none" id="equals-cell">
-                        <div class="dice-equals">=</div>
-                    </div>
-                    <div class="result-cell result-total d-none" id="total-cell">
-                        <div class="dice-total" id="dice-total">?</div>
-                    </div>
-                </div>
-                <div id="dice-event" class="mt-1 fw-bold small"></div>
-            </div>
-
-            <div id="message" class="alert mt-1 mb-0 d-none small py-1"></div>
         </div>
-    </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
-        <h6 class="fw-bold mb-2">👥 Игроки</h6>
-        <div class="row g-2" id="players-list">
-            {% for p in players %}
-                <div class="col-6 col-md-4 col-lg-3" data-player-id="{{ p.id }}">
-                    <div class="player-mini {% if p.id == player.id %}me{% endif %}">
-                        <div class="d-flex align-items-center gap-2">
-                            {% include 'includes/avatar.html' with user=p.student size=28 %}
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="small fw-bold text-truncate">
-                                    {% if p.id == player.id %}Ты{% else %}{{ p.student.get_full_name|default:p.student.username }}{% endif %}
-                                </div>
-                                <div class="text-muted" style="font-size: 11px;">
-                                    Поз: <span class="pos-value">{{ p.position }}</span>
+        <!-- ТАБЕЛЬ -->
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-lg rounded-4 p-3 h-100" style="background: rgba(255,255,255,0.9);">
+                <h6 class="fw-bold mb-3 text-dark border-bottom pb-2">🏆 Табель лидеров</h6>
+                <div class="d-flex flex-column gap-2" id="players-list">
+                    {% for p in players %}
+                        <div class="player-rank {% if p.id == player.id %}me{% endif %}" data-player-id="{{ p.id }}">
+                            <div class="rank-badge">#{{ forloop.counter }}</div>
+                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+
+                                <!-- Аватар подставляется в JS (одна функция для табеля и поля) -->
+                                <img class="avatar-img" alt="">
+
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="small fw-bold text-truncate text-dark">
+                                        {% if p.id == player.id %}Ты{% else %}{{ p.student.get_full_name|default:p.student.username }}{% endif %}
+                                    </div>
+                                    <div class="text-secondary fw-bold" style="font-size: 12px;">
+                                        Позиция: <span class="pos-value text-primary">{{ p.position }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    {% endfor %}
                 </div>
-            {% endfor %}
+            </div>
         </div>
     </div>
-
 </div>
 
 <style>
-.monopoly-page { max-width: 1200px; margin: 0 auto; }
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-.board-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 7 / 4;
-    max-width: 1100px;
-    margin: 0 auto;
-    background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
-    border-radius: 28px;
-    padding: 16px;
-    box-shadow:
-        0 16px 48px -16px rgba(99,102,241,0.35),
-        inset 0 0 0 2px rgba(255,255,255,0.9);
+.monopoly-page {
+    max-width: 1400px; margin: 0 auto;
+    background: #e0f2fe;
+    padding: 20px; border-radius: 24px;
+    font-family: 'Press Start 2P', monospace;
 }
-.board { position: absolute; inset: 16px; }
 
+/* КАРТА */
+.board-wrap {
+    position: relative; width: 100%; aspect-ratio: 1 / 1; max-width: 900px; margin: 0 auto;
+    background: #fef3c7;
+    border-radius: 30px;
+    padding: 24px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15), inset 0 0 0 8px #fde68a;
+    border: 4px solid #f59e0b;
+}
+.board { position: absolute; inset: 24px; }
+
+.board::before {
+    content: ''; position: absolute; inset: 16%;
+    background: #a3e635;
+    border-radius: 20px;
+    border: 4px solid #65a30d;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+    z-index: 1;
+}
+
+/* КЛЕТКИ */
 .track-cell {
     position: absolute;
-    border-radius: 18px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 6px;
-    color: #1f2937;
-    text-align: center;
-    transition: all 0.3s ease;
-    overflow: hidden;
-    border: 2px solid rgba(255,255,255,0.55);
-    box-shadow:
-        0 5px 12px -3px rgba(0,0,0,0.18),
-        0 2px 4px rgba(0,0,0,0.08),
-        inset 0 3px 0 rgba(255,255,255,0.6),
-        inset 0 -4px 0 rgba(0,0,0,0.12);
-}
-.track-cell::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 45%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
-    pointer-events: none;
-    border-radius: 18px 18px 0 0;
-}
-.track-cell-icon {
-    font-size: 40px;
-    line-height: 1;
-    margin-bottom: 5px;
-    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3));
-    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px; color: #fff; text-align: center;
+    border-radius: 16px;
+    border: 3px solid rgba(0,0,0,0.1);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.2), inset 0 3px 0 rgba(255,255,255,0.6);
     z-index: 2;
+    image-rendering: pixelated;
+    overflow: visible;
+}
+
+.track-cell-icon {
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
 }
 .track-cell-label {
-    font-size: 13px;
-    line-height: 1.15;
+    font-size: 9px;
+    line-height: 1.1;
     font-weight: 900;
-    color: #ffffff;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(0,0,0,0.3);
-    padding: 0 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    position: relative;
-    z-index: 2;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+    padding: 0 2px;
+    word-wrap: break-word;
 }
 .track-cell-num {
     position: absolute;
-    top: 5px;
-    left: 9px;
-    font-size: 13px;
-    color: rgba(255,255,255,0.95);
-    font-weight: 900;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-    z-index: 3;
+    top: 4px;
+    left: 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.9);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
 }
 
-.track-start {
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
-        linear-gradient(160deg, #34d399 0%, #10b981 60%, #047857 100%);
-    border-color: #059669;
-}
-.track-finish {
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%),
-        linear-gradient(160deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
-    border-color: #b45309;
-}
-.track-boost {
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
-        linear-gradient(160deg, #fde047 0%, #facc15 60%, #eab308 100%);
-    border-color: #ca8a04;
-}
-.track-trap {
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%),
-        linear-gradient(160deg, #fb7185 0%, #ef4444 60%, #dc2626 100%);
-    border-color: #b91c1c;
-}
-.track-bonus {
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
-        linear-gradient(160deg, #c084fc 0%, #a855f7 60%, #7e22ce 100%);
-    border-color: #6b21a8;
-}
-.track-swap {
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%),
-        linear-gradient(160deg, #38bdf8 0%, #06b6d4 60%, #0891b2 100%);
-    border-color: #0e7490;
-}
-.track-empty {
-    background:
-        radial-gradient(circle at 30% 20%, #ffffff, transparent 60%),
-        linear-gradient(160deg, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
-    border-color: #cbd5e1;
-}
-.track-empty .track-cell-label {
-    color: #475569;
-    text-shadow: 0 1px 0 rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.08);
-}
-.track-empty .track-cell-num {
-    color: #94a3b8;
-    text-shadow: none;
-}
+/* ЦВЕТА */
+.track-start { background: #3b82f6; }
+.track-finish { background: #f59e0b; animation: finishBlink 1s step-end infinite; }
+@keyframes finishBlink { 50% { background: #fbbf24; } }
+.track-boost { background: #eab308; }
+.track-trap { background: #ef4444; }
+.track-bonus { background: #a855f7; }
+.track-swap { background: #06b6d4; }
+.track-empty { background: #f1f5f9; }
+.track-empty .track-cell-label { color: #334155; text-shadow: none; }
+.track-empty .track-cell-num { color: #64748b; text-shadow: none; }
 
-.board-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 56%;
-    height: 46%;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border-radius: 22px;
-    box-shadow:
-        inset 0 0 0 2px rgba(99,102,241,0.08),
-        0 10px 30px -10px rgba(99,102,241,0.25);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 14px;
-    z-index: 5;
-    gap: 8px;
-}
-.center-status {
-    text-align: center;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
+/* ФИШКИ ИГРОКОВ (В правом нижнем углу) */
 .track-cell-players {
     position: absolute;
-    inset: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    justify-content: center;
-    gap: 3px;
-    padding: 6px;
-    padding-top: 22px;
+    bottom: 2px;
+    right: 2px;
+    display: flex; flex-wrap: wrap; justify-content: flex-end;
+    gap: 2px;
     pointer-events: none;
-    z-index: 4;
+    z-index: 10;
 }
 .track-cell-player {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    border: 2px solid #6366f1;
-    overflow: hidden;
-    box-shadow: 0 2px 8px -1px rgba(99,102,241,0.7);
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 26px; height: 26px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 3px solid var(--pc, #fff);
+    overflow: hidden; image-rendering: pixelated;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
 }
-.track-cell-player img { width: 100%; height: 100%; object-fit: cover; }
+.track-cell-player img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 .track-cell-player.is-me {
-    border-color: #fbbf24;
-    box-shadow: 0 0 0 3px rgba(251,191,36,0.6), 0 3px 12px -1px rgba(251,191,36,0.9);
-    z-index: 20;
-    width: 30px;
-    height: 30px;
-}
-.track-cell-player.jumping { animation: chipJump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes chipJump {
-    0%   { transform: scale(1) translateY(0); }
-    40%  { transform: scale(1.4) translateY(-10px); }
-    70%  { transform: scale(1.1) translateY(-2px); }
-    100% { transform: scale(1) translateY(0); }
-}
-.track-cell.me-here {
-    box-shadow:
-        0 0 0 4px rgba(99,102,241,0.55),
-        0 10px 22px -4px rgba(99,102,241,0.6),
-        inset 0 3px 0 rgba(255,255,255,0.6);
-    transform: scale(1.06);
-    z-index: 6;
-}
-.track-cell.stepping {
-    box-shadow:
-        0 0 0 5px rgba(245,158,11,0.6),
-        0 12px 26px -4px rgba(245,158,11,0.75);
-    transform: scale(1.12);
-    z-index: 8;
-}
-.track-cell.arrived {
-    box-shadow:
-        0 0 0 5px rgba(16,185,129,0.6),
-        0 12px 26px -4px rgba(16,185,129,0.65);
-}
-.track-cell.modifier-hit      { animation: modifierPulse 0.8s ease-out; }
-.track-cell.modifier-hit-trap { animation: modifierPulseTrap 0.8s ease-out; }
-@keyframes modifierPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0.9); }
-    50%  { box-shadow: 0 0 0 18px rgba(251,191,36,0); }
-    100% { box-shadow: 0 0 0 5px rgba(245,158,11,0.6); }
-}
-@keyframes modifierPulseTrap {
-    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.9); }
-    50%  { box-shadow: 0 0 0 18px rgba(239,68,68,0); }
-    100% { box-shadow: 0 0 0 5px rgba(239,68,68,0.6); }
+    width: 30px; height: 30px; z-index: 20;
+    border-color: var(--pc, #fff);
+    box-shadow: 0 0 0 3px #fbbf24;
 }
 
-.roulette-container { width: 100%; max-width: 260px; }
-.roulette-window {
-    position: relative;
-    width: 100%;
-    height: 62px;
-    background: linear-gradient(180deg, #1e1b4b 0%, #2a2555 50%, #1e1b4b 100%);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: inset 0 0 16px rgba(0,0,0,0.6), 0 6px 20px -6px rgba(30,27,75,0.6);
-    border: 2px solid #3d31cc;
-}
-.roulette-window::before,
-.roulette-window::after {
-    content: ''; position: absolute; top: 0; bottom: 0; width: 50px; z-index: 3; pointer-events: none;
-}
-.roulette-window::before { left: 0; background: linear-gradient(90deg, rgba(30,27,75,1), transparent); }
-.roulette-window::after  { right: 0; background: linear-gradient(-90deg, rgba(30,27,75,1), transparent); }
-.roulette-track {
-    position: absolute; top: 0; left: 0; height: 100%;
-    display: flex; align-items: center; will-change: transform;
-}
-.roulette-item {
-    width: 56px; height: 100%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 32px; font-weight: 900; color: white;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5); position: relative;
-}
-.roulette-item:nth-child(6n+1) { color: #a5b4fc; }
-.roulette-item:nth-child(6n+2) { color: #fcd34d; }
-.roulette-item:nth-child(6n+3) { color: #fca5a5; }
-.roulette-item:nth-child(6n+4) { color: #6ee7b7; }
-.roulette-item:nth-child(6n+5) { color: #c4b5fd; }
-.roulette-item:nth-child(6n+6) { color: #f9a8d4; }
-.roulette-pointer {
-    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-    font-size: 18px; color: #fbbf24; z-index: 10; line-height: 1;
-    filter: drop-shadow(0 3px 6px rgba(251,191,36,0.8));
-    animation: pointerPulse 0.8s ease-in-out infinite;
-}
-@keyframes pointerPulse {
-    0%, 100% { transform: translateX(-50%) scale(1); }
-    50%      { transform: translateX(-50%) scale(1.15); }
-}
-.roulette-center-line {
-    position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 2px;
-    background: linear-gradient(180deg, transparent, #fbbf24, transparent);
-    z-index: 4; opacity: 0.6;
+/* АНИМАЦИИ ХОДА (раньше классов не было в CSS) */
+.track-cell-player.jumping { animation: chipJump .4s ease-out; }
+@keyframes chipJump { 40% { transform: translateY(-14px) scale(1.2); } }
+.track-cell.stepping { filter: brightness(1.2); transform: translateY(-3px); transition: .15s; }
+.track-cell.arrived { animation: arrivedFlash 1s ease-out; }
+@keyframes arrivedFlash { 30% { box-shadow: 0 0 0 6px rgba(255,255,255,.9), 0 6px 0 rgba(0,0,0,.2); } }
+.track-cell.me-here { outline: 3px solid #fbbf24; outline-offset: 2px; }
+
+/* ЦЕНТР И КУБИК */
+.board-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 55%; height: 55%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 5; gap: 10px;
 }
 
-.result-wrapper {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+.btn-roll {
+    background: #3b82f6; color: #fff; border: 3px solid #1e3a8a; border-radius: 14px;
+    font-family: 'Press Start 2P', monospace; font-size: 16px; padding: 18px 32px;
+    box-shadow: 0 6px 0 #1e3a8a, inset 0 2px 0 rgba(255,255,255,0.4); cursor: pointer;
+    animation: btnPulse 1.2s ease-in-out infinite;
 }
-.result-cell { display: flex; align-items: center; justify-content: center; }
-.result-main .dice-big {
-    display: flex; align-items: center; justify-content: center;
-    width: 60px; height: 60px;
-    font-size: 34px; font-weight: 900;
-    color: #78350f;
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border-radius: 14px; border: 2px solid #f59e0b;
-    box-shadow: 0 6px 16px -4px rgba(251,191,36,0.5);
-    animation: diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes diceAppear {
-    0%   { transform: scale(0.3) rotate(-15deg); opacity: 0; }
-    60%  { transform: scale(1.15) rotate(5deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0); }
-}
-.result-modifier .dice-mod {
-    display: flex; align-items: center; justify-content: center;
-    width: 42px; height: 42px; font-size: 22px; font-weight: 900;
-    border-radius: 11px;
-    animation: modifierAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.result-modifier.boost .dice-mod {
-    color: #78350f;
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border: 2px solid #f59e0b;
-}
-.result-modifier.trap .dice-mod {
-    color: #7f1d1d;
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
-    border: 2px solid #ef4444;
-}
-@keyframes modifierAppear {
-    0%   { transform: scale(0.3) translateX(24px); opacity: 0; }
-    100% { transform: scale(1) translateX(0); opacity: 1; }
-}
-.result-equals .dice-equals { font-size: 22px; font-weight: 900; color: #78350f; }
-.result-total .dice-total {
-    display: flex; align-items: center; justify-content: center;
-    width: 68px; height: 68px; font-size: 34px; font-weight: 900;
-    color: white;
-    background: linear-gradient(135deg, #10b981, #059669);
-    border-radius: 16px; border: 3px solid #059669;
-    box-shadow: 0 10px 22px -6px rgba(16,185,129,0.6);
-    animation: totalAppear 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.result-total.negative .dice-total {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    border-color: #b91c1c;
-}
-@keyframes totalAppear {
-    0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
-    50%  { transform: scale(1.3) rotate(15deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0); }
-}
-.result-main.shrink .dice-big { transform: scale(0.85); opacity: 0.6; transition: all 0.6s; }
-.result-modifier.merge .dice-mod {
-    transform: scale(0.5) translateX(-50px); opacity: 0;
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
+.btn-roll:disabled { opacity: .6; animation: none; }
+.btn-roll:active { animation: none; transform: translateY(6px); box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); }
+@keyframes btnPulse { 50% { transform: scale(1.07); } }
 
-.player-mini {
-    background: #f8f9ff; border-radius: 10px; padding: 6px 8px;
-    border: 2px solid transparent; transition: all 0.2s;
-}
-.player-mini.me { background: #eef2ff; border-color: #6366f1; }
-.player-mini.current {
-    border-color: #fbbf24;
-    box-shadow: 0 0 0 2px rgba(251,191,36,0.25);
-    background: #fffbeb;
-}
+/* ТАБЕЛЬ */
+.card { background: #ffffff !important; border: 4px solid #e2e8f0 !important; border-radius: 20px !important; }
+.player-rank { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px; background: #f8fafc; border-radius: 12px; border: 2px solid #e2e8f0; transition: .2s; }
+.player-rank.me { background: #eff6ff; border-color: #3b82f6; }
+.rank-badge { background: #f59e0b; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 10px; border-radius: 8px; }
+.avatar-img { width: 36px; height: 36px; border-radius: 50%; image-rendering: pixelated; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-@media (max-width: 900px) {
-    .board-wrap { border-radius: 20px; padding: 10px; }
-    .board { inset: 10px; }
-    .track-cell { border-radius: 12px; padding: 5px 3px; }
-    .track-cell-icon { font-size: 28px; margin-bottom: 3px; }
-    .track-cell-label { font-size: 10px; }
-    .track-cell-num { font-size: 10px; top: 3px; left: 6px; }
-    .track-cell-player { width: 20px; height: 20px; font-size: 11px; }
-    .track-cell-player.is-me { width: 24px; height: 24px; }
-    .track-cell-players { padding-top: 16px; }
-    .board-center { width: 60%; height: 52%; padding: 10px; border-radius: 16px; gap: 6px; }
-    .result-main .dice-big { width: 46px; height: 46px; font-size: 26px; }
-    .result-modifier .dice-mod { width: 34px; height: 34px; font-size: 18px; }
-    .result-total .dice-total { width: 52px; height: 52px; font-size: 26px; }
-    .result-equals .dice-equals { font-size: 16px; }
-    .roulette-window { height: 50px; }
-    .roulette-item { width: 42px; font-size: 24px; }
-    .roulette-window::before, .roulette-window::after { width: 36px; }
+/* ТЕКУЩИЙ ХОД В ТАБЕЛЕ */
+.player-rank.current {
+    background: #fef9c3; border-color: #f59e0b;
+    animation: turnPulse 1.2s ease-in-out infinite;
 }
-@media (max-width: 600px) {
-    .track-cell-icon { font-size: 22px; }
-    .track-cell-label { font-size: 8px; }
-    .track-cell-num { font-size: 8px; }
-    .track-cell-player { width: 16px; height: 16px; font-size: 9px; }
-    .track-cell-player.is-me { width: 19px; height: 19px; }
-    .track-cell-players { padding-top: 12px; }
+.player-rank.current::after {
+    content: '🎲 ХОДИТ'; position: absolute; right: 8px; top: 6px;
+    font-size: 7px; color: #b45309;
 }
+@keyframes turnPulse { 50% { box-shadow: 0 0 0 5px rgba(245,158,11,.3); } }
+
+/* СТАТУС */
+.center-status { background: rgba(255,255,255,0.9); padding: 8px 16px; border-radius: 20px; border: 2px solid #cbd5e1; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.center-status .text-danger { color: #ef4444 !important; }
+.center-status .text-secondary { color: #64748b !important; }
+.center-status.my-turn { background: #fee2e2; border-color: #ef4444; animation: myTurn 1s ease-in-out infinite; }
+@keyframes myTurn { 50% { transform: scale(1.06); } }
+
+/* ЛОГ ХОДОВ */
+.move-log { width: 90%; font-size: 8px; line-height: 1.6; color: #365314; text-align: center; min-height: 40px; }
+.move-log div:first-child { font-weight: bold; color: #1a2e05; }
+
+/* КУБИК */
+.dice-container { perspective: 800px; width: 80px; height: 80px; margin-bottom: 10px; margin-top: 20px; }
+.dice { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transform: rotateX(-25deg) rotateY(25deg); transition: transform 0.5s ease-out; }
+.face { position: absolute; width: 80px; height: 80px; background: #ffffff; border: 4px solid #e2e8f0; border-radius: 12px; font-size: 40px; font-weight: 900; color: #1e293b; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
+.front  { transform: translateZ(40px); }
+.back   { transform: rotateY(180deg) translateZ(40px); }
+.right  { transform: rotateY(90deg) translateZ(40px); }
+.left   { transform: rotateY(-90deg) translateZ(40px); }
+.top    { transform: rotateX(90deg) translateZ(40px); }
+.bottom { transform: rotateX(-90deg) translateZ(40px); }
+
+.rolling-dice { animation: rollAnim 1s linear infinite; }
+@keyframes rollAnim { 0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); } 100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); } }
+
+.show-1 { transform: rotateX(0deg) rotateY(0deg); }
+.show-2 { transform: rotateX(0deg) rotateY(180deg); }
+.show-3 { transform: rotateX(0deg) rotateY(-90deg); }
+.show-4 { transform: rotateX(0deg) rotateY(90deg); }
+.show-5 { transform: rotateX(-90deg) rotateY(0deg); }
+.show-6 { transform: rotateX(90deg) rotateY(0deg); }
 </style>
 
 {% include 'includes/monopoly_animate.html' with my_id=player.id map=map %}
@@ -477,6 +282,7 @@
 <script>
 const MONOPOLY_ID = {{ monopoly.id }};
 const MY_ID = {{ player.id }};
+const MNO_PLAYER_IDS = [{% for p in players %}{{ p.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
 
 let spinning = false;
 let rolling = false;
@@ -485,69 +291,47 @@ let pendingRedirect = false;
 const trackEl = document.getElementById('track');
 const statusEl = document.getElementById('turn-status');
 const btn = document.getElementById('roll-btn');
-const roulette = document.getElementById('roulette');
-const rouletteTrack = document.getElementById('roulette-track');
+
+// ЛОГ ХОДОВ
+function addLog(text) {
+    const log = document.getElementById('move-log');
+    if (!log) return;
+    const row = document.createElement('div');
+    row.textContent = text;
+    log.prepend(row);
+    while (log.children.length > 3) log.lastChild.remove();
+}
+// вызывается из monopoly_animate.html при чужих ходах
+function mnoOnMove(p, from, to) { addLog(`${p.name || 'Игрок'}: ${from} → ${to}`); }
+
+// Аватары и цвета в табеле (те же, что и фишки на поле)
+document.querySelectorAll('#players-list .player-rank').forEach(card => {
+    const id = Number(card.dataset.playerId);
+    const img = card.querySelector('.avatar-img');
+    if (img) { img.src = mnoAvatarSrc(id); img.style.borderColor = mnoPlayerColor(id); }
+    card.style.borderLeft = `6px solid ${mnoPlayerColor(id)}`;
+});
 
 function spinDice(finalValue) {
     return new Promise((resolve) => {
         spinning = true;
-        roulette.classList.remove('d-none');
-        btn.classList.add('d-none');
+        if (btn) btn.classList.add('d-none');
+        const dice = document.getElementById('main-dice');
+        if (dice) dice.className = 'dice rolling-dice';
 
-        const ITEM_W = window.innerWidth <= 768 ? 42 : 56;
-        const TOTAL_ITEMS = 50;
-        const STOP_INDEX = 40;
-
-        requestAnimationFrame(() => {
-            const windowEl = roulette.querySelector('.roulette-window');
-            const windowWidth = windowEl.offsetWidth;
-
-            rouletteTrack.innerHTML = '';
-            for (let i = 0; i < TOTAL_ITEMS; i++) {
-                const el = document.createElement('div');
-                el.className = 'roulette-item';
-                el.textContent = Math.floor(Math.random() * 6) + 1;
-                rouletteTrack.appendChild(el);
+        setTimeout(() => {
+            if (dice) {
+                dice.classList.remove('rolling-dice');
+                dice.classList.add('show-' + finalValue);
             }
-
-            const items = rouletteTrack.children;
-            items[STOP_INDEX].textContent = finalValue;
-
-            const itemCenter = (STOP_INDEX * ITEM_W) + (ITEM_W / 2);
-            const offset = itemCenter - (windowWidth / 2);
-
-            rouletteTrack.style.transition = 'none';
-            rouletteTrack.style.transform = 'translateX(0)';
-            void rouletteTrack.offsetWidth;
-
-            rouletteTrack.style.transition = 'transform 3.6s cubic-bezier(0.1, 0.95, 0.2, 1)';
-            rouletteTrack.style.transform = `translateX(-${offset}px)`;
-
-            setTimeout(() => {
-                items[STOP_INDEX].style.transform = 'scale(1.35)';
-                items[STOP_INDEX].style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                setTimeout(() => { items[STOP_INDEX].style.transform = 'scale(1)'; }, 400);
-                setTimeout(() => {
-                    roulette.classList.add('d-none');
-                    spinning = false;
-                    resolve();
-                }, 900);
-            }, 3600);
-        });
+            setTimeout(() => { spinning = false; resolve(); }, 800);
+        }, 1000);
     });
-}
-
-function resetResultUI() {
-    document.getElementById('modifier-cell').classList.add('d-none');
-    document.getElementById('equals-cell').classList.add('d-none');
-    document.getElementById('total-cell').classList.add('d-none');
-    document.getElementById('modifier-cell').classList.remove('boost', 'trap', 'merge');
-    document.getElementById('total-cell').classList.remove('pulse', 'negative');
-    document.querySelector('.result-main').classList.remove('shrink');
 }
 
 function showMessage(text, type = 'danger') {
     const el = document.getElementById('message');
+    if (!el) return;
     el.className = `alert alert-${type} mt-1 mb-0 small py-1`;
     el.textContent = text;
     setTimeout(() => { el.className = 'alert mt-1 mb-0 d-none small py-1'; }, 4000);
@@ -558,210 +342,101 @@ async function refreshState() {
         const r = await fetch("{% url 'games:monopoly_state' monopoly.id %}");
         const data = await r.json();
 
-        document.getElementById('turn-number').textContent = data.turn_number;
+        if (document.getElementById('turn-number')) document.getElementById('turn-number').textContent = data.turn_number;
         const me = data.players.find(p => p.id === MY_ID);
 
-        // Пока идёт мой бросок — не анимируем параллельно
-        if (rolling || spinning) {
-            data.players.forEach(p => { mnoLastPositions[p.id] = p.position; });
-            updateMiniCards(data);
-            return;
-        }
+        if (rolling || spinning) { updateMiniCards(data); return; }
 
-        await mnoRenderPlayers(trackEl, data.players);
+        if (typeof mnoRenderPlayers === 'function') await mnoRenderPlayers(trackEl, data.players);
         updateMiniCards(data);
 
         if (data.status === 'finished') {
-            statusEl.innerHTML = '<div class="fs-5 fw-bold text-success">🏆 Игра завершена!</div>';
-            btn.classList.add('d-none');
-
+            if (statusEl) statusEl.innerHTML = '<div class="fs-6 fw-bold text-success">🏆 Игра завершена!</div>';
+            if (statusEl) statusEl.classList.remove('my-turn');
+            if (btn) btn.classList.add('d-none');
             if (!pendingRedirect) {
                 pendingRedirect = true;
-                const waitRedirect = setInterval(() => {
-                    if (!mnoAnimating) {
-                        clearInterval(waitRedirect);
-                        setTimeout(() => {
-                            window.location.href = "{% url 'games:monopoly_results' monopoly.id %}";
-                        }, 1500);
-                    }
-                }, 200);
+                setTimeout(() => { window.location.href = "{% url 'games:monopoly_results' monopoly.id %}"; }, 2000);
             }
             return;
         }
 
         if (data.status === 'waiting') {
-            statusEl.innerHTML = '<div class="fs-6 fw-bold text-muted">⏳ Ждём остальных…</div>';
-            btn.classList.add('d-none');
+            if (statusEl) statusEl.innerHTML = '<div class="fs-6 fw-bold text-secondary">⏳ Ждём остальных…</div>';
+            if (statusEl) statusEl.classList.remove('my-turn');
+            if (btn) btn.classList.add('d-none');
             return;
         }
 
         if (me && me.is_finished) {
-            statusEl.innerHTML = '<div class="fs-6 fw-bold text-success">🎉 Ты на финише! Ждём остальных…</div>';
-            btn.classList.add('d-none');
+            if (statusEl) statusEl.innerHTML = '<div class="fs-6 fw-bold text-success">🎉 Ты на финише!</div>';
+            if (statusEl) statusEl.classList.remove('my-turn');
+            if (btn) btn.classList.add('d-none');
             return;
         }
 
+        // подсветка плашки статуса, когда ход мой
+        if (statusEl) statusEl.classList.toggle('my-turn', data.current_player_id === MY_ID);
+
         if (data.current_player_id === MY_ID) {
-            statusEl.innerHTML = '<div class="fs-6 fw-bold text-primary">🎲 Твой ход!</div>';
-            btn.classList.remove('d-none');
+            if (statusEl) statusEl.innerHTML = '<div class="fs-6 fw-bold text-danger">🎲 Твой ход!</div>';
+            if (btn) btn.classList.remove('d-none');
         } else {
-            statusEl.innerHTML = `<div class="fs-6 fw-bold text-muted">Ждём: ${data.current_player_name || '…'}</div>`;
-            btn.classList.add('d-none');
+            if (statusEl) statusEl.innerHTML = `<div class="fs-6 fw-bold text-secondary">Ждём: ${data.current_player_name || '…'}</div>`;
+            if (btn) btn.classList.add('d-none');
         }
-    } catch (e) {
-        console.error('state error', e);
-    }
+    } catch (e) { console.error('state error', e); }
 }
 
 function updateMiniCards(data) {
-    data.players.forEach(p => {
+    const sortedPlayers = [...data.players].sort((a, b) => b.position - a.position);
+    sortedPlayers.forEach((p, index) => {
         const card = document.querySelector(`#players-list [data-player-id="${p.id}"]`);
         if (!card) return;
+        const rankBadge = card.querySelector('.rank-badge');
+        if (rankBadge) {
+            rankBadge.textContent = '#' + (index + 1);
+            if (index === 0) rankBadge.style.background = '#fbbf24';
+            else if (index === 1) rankBadge.style.background = '#94a3b8';
+            else if (index === 2) rankBadge.style.background = '#b45309';
+            else rankBadge.style.background = '#94a3b8';
+        }
         const posEl = card.querySelector('.pos-value');
         if (posEl) posEl.textContent = p.position;
-        const mini = card.querySelector('.player-mini');
-        if (mini) mini.classList.toggle('current', p.id === data.current_player_id);
+        // card и есть .player-rank, поэтому класс ставим на него
+        card.classList.toggle('current', p.id === data.current_player_id);
     });
 }
 
-btn.addEventListener('click', async function () {
-    if (rolling || spinning || mnoAnimating) return;
-    rolling = true;
-    this.disabled = true;
-
-    try {
-        const r = await fetch("{% url 'games:monopoly_roll' monopoly.id %}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-        });
-        const data = await r.json();
-
-        if (data.error) {
-            const msgs = {
-                'not_your_turn': 'Сейчас не твой ход',
-                'already_finished': 'Ты уже на финише',
-            };
-            showMessage(msgs[data.error] || data.error);
-            rolling = false;
-            this.disabled = false;
-            return;
-        }
-
-        await spinDice(data.dice);
-
-        const from = data.from;
-        const posAfterDice = data.pos_after_dice;
-        const finalPos = data.to;
-        const modifierType = data.modifier_type;
-        const modifier = data.modifier;
-
-        mnoLastPositions[MY_ID] = finalPos;
-
-        if (modifierType === 'boost' || modifierType === 'trap' || modifierType === 'shield') {
-            const diceBox = document.getElementById('dice-result');
-            const diceVal = document.getElementById('dice-value');
-            const modCell = document.getElementById('modifier-cell');
-            const modVal = document.getElementById('dice-modifier');
-            const eqCell = document.getElementById('equals-cell');
-            const totalCell = document.getElementById('total-cell');
-            const totalVal = document.getElementById('dice-total');
-            const diceEv = document.getElementById('dice-event');
-
-            resetResultUI();
-            diceBox.classList.remove('d-none');
-            diceVal.textContent = data.dice;
-            diceVal.style.animation = 'none';
-            void diceVal.offsetWidth;
-            diceVal.style.animation = 'diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-            diceEv.textContent = '';
-
-            await mnoSleep(700);
-            const isTrap = (modifierType === 'trap');
-            const isShield = (modifierType === 'shield');
-
-            await mnoAnimatePlayer(MY_ID, from, posAfterDice);
-
-            const modCellEl = document.querySelector(`.track-cell[data-index="${posAfterDice}"]`);
-            if (modCellEl) {
-                modCellEl.classList.add(isTrap ? 'modifier-hit-trap' : 'modifier-hit');
-                setTimeout(() => modCellEl.classList.remove('modifier-hit', 'modifier-hit-trap'), 900);
+if (btn) {
+    btn.addEventListener('click', async function () {
+        if (rolling || spinning || mnoAnimating) return;
+        rolling = true; this.disabled = true;
+        try {
+            const r = await fetch("{% url 'games:monopoly_roll' monopoly.id %}", {
+                method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            });
+            const data = await r.json();
+            if (data.error) {
+                const msgs = { 'not_your_turn': 'Сейчас не твой ход', 'already_finished': 'Ты уже на финише' };
+                showMessage(msgs[data.error] || data.error);
+                rolling = false; this.disabled = false; return;
             }
-
-            await mnoSleep(400);
-
-            if (isShield) {
-                diceEv.textContent = '🛡 Щит спас от ловушки!';
-                diceEv.className = 'mt-1 fw-bold small text-info';
-                await mnoSleep(1300);
-                diceBox.classList.add('d-none');
-            } else {
-                modVal.textContent = (modifier > 0 ? '+' : '') + modifier;
-                modCell.classList.add(isTrap ? 'trap' : 'boost');
-                modCell.classList.remove('d-none');
-                await mnoSleep(700);
-
-                eqCell.classList.remove('d-none');
-                await mnoSleep(300);
-
-                const totalSteps = data.dice + modifier;
-                totalVal.textContent = totalSteps;
-                if (totalSteps < 0) totalCell.classList.add('negative');
-                totalCell.classList.remove('d-none');
-                totalCell.classList.add('pulse');
-
-                diceEv.textContent = data.cell_label;
-                diceEv.className = 'mt-1 fw-bold small ' + (modifier > 0 ? 'text-success' : 'text-danger');
-
-                await mnoSleep(550);
-                modCell.classList.add('merge');
-                document.querySelector('.result-main').classList.add('shrink');
-                eqCell.classList.add('d-none');
-                await mnoSleep(850);
-                diceBox.classList.add('d-none');
-            }
-
-            await mnoSleep(220);
-            if (finalPos !== posAfterDice) {
-                await mnoAnimatePlayer(MY_ID, posAfterDice, finalPos);
-            }
-        } else {
-            const diceBox = document.getElementById('dice-result');
-            const diceVal = document.getElementById('dice-value');
-            const diceEv = document.getElementById('dice-event');
-
-            resetResultUI();
-            diceBox.classList.remove('d-none');
-            diceVal.textContent = data.dice;
-            diceVal.style.animation = 'none';
-            void diceVal.offsetWidth;
-            diceVal.style.animation = 'diceAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-            diceEv.textContent = data.cell_label;
-            diceEv.className = 'mt-1 fw-bold small text-primary';
-
-            await mnoSleep(1100);
-            diceBox.classList.add('d-none');
-            await mnoAnimatePlayer(MY_ID, from, finalPos);
+            await spinDice(data.dice);
+            addLog(`Ты: 🎲${data.dice}, ${data.from} → ${data.to}`);
+            if (typeof mnoAnimatePlayer === 'function') await mnoAnimatePlayer(MY_ID, data.from, data.to);
+            mnoLastPositions[MY_ID] = data.to;
+            rolling = false; await refreshState();
+            setTimeout(() => { this.disabled = false; }, 300);
+        } catch (e) {
+            console.error('ROLL ERROR:', e); showMessage('Ошибка: ' + (e.message || 'что-то сломалось'));
+            rolling = false; this.disabled = false;
+            const dice = document.getElementById('main-dice'); if (dice) dice.className = 'dice';
         }
-
-        if (data.applied_card) {
-            showMessage('🎴 Ты применил карту!', 'success');
-        }
-
-        mnoLastPositions[MY_ID] = finalPos;
-        rolling = false;
-        await refreshState();
-        setTimeout(() => { this.disabled = false; }, 300);
-    } catch (e) {
-        console.error('ROLL ERROR:', e);
-        showMessage('Ошибка: ' + (e.message || 'что-то сломалось'));
-        rolling = false;
-        this.disabled = false;
-    }
-});
+    });
+}
 
 refreshState();
-setInterval(() => {
-    if (!mnoAnimating && !spinning && !rolling) refreshState();
-}, 2000);
+setInterval(() => { if (!mnoAnimating && !spinning && !rolling) refreshState(); }, 2000);
 </script>
 {% endblock %}
